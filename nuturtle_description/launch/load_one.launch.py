@@ -1,17 +1,15 @@
 from ament_index_python.packages import get_package_share_path
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, Shutdown
 from launch.conditions import LaunchConfigurationEquals
 from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
-from launch.events import Shutdown
 
 
 def generate_launch_description():
-    ddrive_pkg_path = get_package_share_path('nuturtle_description')
-    robot_model_path = ddrive_pkg_path / 'turtlebot3_burger.urdf.xacro'
-    default_rviz_config_path = ddrive_pkg_path / 'basic_purple.rviz'
+    robot_model_path = get_package_share_path('nuturtle_description') / 'urdf/turtlebot3_burger.urdf.xacro'
+    default_rviz_config_path = get_package_share_path('nuturtle_description') / 'config/basic_purple.rviz'
 
     model_arg = DeclareLaunchArgument(name='model', default_value=str(robot_model_path),
                                       description='Absolute path to robot urdf file')
@@ -27,35 +25,31 @@ def generate_launch_description():
 
     robot_description = ParameterValue(Command(['xacro ', LaunchConfiguration('model')]),
                                        value_type=str)
-    # robot_configs = ddrive_pkg_path / 'ddrive.yaml'
+    # robot_configs = pkg_path / 'ddrive.yaml'
 
-    robot_state_publisher_node = Node(
-        package='robot_state_publisher',
-        executable='robot_state_publisher',
-        parameters=[{'robot_description': robot_description}]
-    )
-
-    joint_state_publisher_gui_node = Node(
-        package='joint_state_publisher_gui',
-        executable='joint_state_publisher_gui',
-        condition=LaunchConfigurationEquals('use_jsp', 'true')
-    )
-
-    rviz_node = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', LaunchConfiguration('rvizconfig')],
-        condition=LaunchConfigurationEquals('use_rviz', 'true'),
-        on_exit=Shutdown()
-    )
+    # rviz_node = 
 
     return LaunchDescription([
         model_arg,
         rviz_arg,
         use_jsp,
         use_rviz,
-        joint_state_publisher_gui_node,
-        robot_state_publisher_node,
-        rviz_node
+        Node(
+            package='joint_state_publisher_gui',
+            executable='joint_state_publisher_gui',
+            condition=LaunchConfigurationEquals('use_jsp', 'true')
+        ),
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            parameters=[{'robot_description': robot_description}]
+        ),
+        Node(
+            package='rviz2',
+            executable='rviz2',
+            name='rviz2',
+            arguments=['-d', LaunchConfiguration('rvizconfig')],
+            condition=LaunchConfigurationEquals('use_rviz', 'true'),
+            on_exit=Shutdown()
+        )
     ])
