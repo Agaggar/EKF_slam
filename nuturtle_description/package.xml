@@ -5,7 +5,9 @@
   <version>0.0.4</version>
   <description>description of nuturtle</description>
   <maintainer email="agaggar@u.northwestern.edu">ayushgaggar</maintainer>
-  <license>MIT</license>
+  <license>APLv2</license>
+
+  <exec_depend>ros2launch</exec_depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
