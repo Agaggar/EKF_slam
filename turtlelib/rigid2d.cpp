@@ -29,13 +29,20 @@ namespace turtlelib {
     ///     https://en.cppreference.com/w/cpp/io/basic_istream/get
     /// When you call std::peek() it will wait for there to be at least one character in the buffer (e.g., the user types a character)
     /// HINT: this function can be written in under 20 lines and uses only std::peek(), std::get(), istream::operator>>() and a little logic
-    std::istream & operator>>(std::istream & is, Vector2D & v);
+    std::istream & operator>>(std::istream & is, Vector2D & v) {
+        char c1 = is.peek();
+        if (c1 == '[') {
+            is.get();
+        }
+        is >> v.x >> v.y;
+        return is;
+    }
 }
 
 int main(void) {
     turtlelib::Vector2D myvec;
-    myvec.x = 0.0;
-    myvec.y == 0.0;
+    std::cout << "enter the vector you'd like to save: ";
+    std::cin >> myvec;
     std::cout << myvec << std::endl;
     return 0;
 }
