@@ -5,6 +5,7 @@
 
 
 #include<iosfwd> // contains forward definitions for iostream objects
+#include <cstdlib> // standard library, use for absolute value
 
 namespace turtlelib
 {
@@ -22,6 +23,11 @@ namespace turtlelib
     /// if given a compile-time constant as input
     constexpr bool almost_equal(double d1, double d2, double epsilon=1.0e-12)
     {
+        if (abs(d1-d2) < epsilon) {
+            return true;
+        } else {
+            return false;
+        };
     }
 
     /// \brief convert degrees to radians
@@ -29,6 +35,7 @@ namespace turtlelib
     /// \returns radians
     constexpr double deg2rad(double deg)
     {
+        return deg/180.0 * PI;
     }
 
     /// \brief convert radians to degrees
@@ -36,6 +43,7 @@ namespace turtlelib
     /// \returns the angle in degrees
     constexpr double rad2deg(double rad)
     {
+        return rad/PI * 180.0;
     }
 
     /// static_assertions test compile time assumptions.
@@ -49,6 +57,18 @@ namespace turtlelib
     static_assert(almost_equal(rad2deg(0.0), 0.0), "rad2deg) failed");
 
     static_assert(almost_equal(deg2rad(rad2deg(2.1)), 2.1), "deg2rad failed");
+
+    static_assert(almost_equal(deg2rad(180.0), PI), "deg2rad failed");
+
+    static_assert(almost_equal(rad2deg(PI), 180.0), "rad2deg failed");
+
+    /* purposefully failing tests
+    static_assert(almost_equal(0.0, 2.0), "almost_equal *purposely* failed");
+
+    static_assert(almost_equal(deg2rad(180.0), 2*PI), "deg2rad *purposely* failed");
+
+    static_assert(almost_equal(rad2deg(2*PI), 180.0), "deg2rad *purposely* failed");
+    */
 
     /// \brief A 2-Dimensional Vector
     struct Vector2D
