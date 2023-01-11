@@ -80,6 +80,31 @@ namespace turtlelib
         double y = 0.0;
     };
 
+    /// \brief A 2-D Twist
+    struct Twist2D
+    {
+        /// \brief the angular component of the twist
+        double angular = 0.0;
+
+        /// \brief the x component of the linear component
+        double linearx = 0.0;
+
+        /// \brief the y component of the linear component 
+        double lineary = 0.0; // y component
+    };
+
+    /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
+    /// os - stream to output to
+    /// v - the vector to print
+    std::ostream & operator<<(std::ostream & os, const Twist2D & t);
+
+    /// \brief input a 2 dimensional twist
+    ///   entered as follows:
+    ///   [w x y] or w x y
+    /// \param is - stream from which to read
+    /// \param v [out] - output vector
+    ///
+    std::istream & operator>>(std::istream & is, Twist2D & t);
 
 
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
