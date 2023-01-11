@@ -14,6 +14,8 @@
   <xacro:property name="motor_cmd_per_rad_sec" value="${parameters['motor_cmd_per_rad_sec']}" />
   <xacro:property name="encoder_ticks_per_rad" value="${parameters['encoder_ticks_per_rad']}" />
   <xacro:property name="collision_radius" value="${parameters['collision_radius']}" />
+  <xacro:arg name="color" default="purple" />
+  <xacro:property name="color" value="$(arg color)" />
 
   <!-- Init colour -->
   <material name="black">
@@ -70,7 +72,20 @@
       <geometry>
         <mesh filename="package://nuturtle_description/meshes/burger_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="light_black"/>
+      <xacro:if value="${color == purple}">
+        <material name="purple">
+          <color rgba="0.3 0.16 0.52 1.0"/>
+        </material>
+      </xacro:if>
+      <xacro:if value="${color == red}">
+        <material name="red" />
+      </xacro:if>
+      <xacro:if value="${color == blue}">
+        <material name="red" />
+      </xacro:if>
+      <xacro:if value="${color == green}">
+        <material name="red" />
+      </xacro:if>
     </visual>
 
     <collision>
