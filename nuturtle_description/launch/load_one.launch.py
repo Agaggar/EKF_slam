@@ -6,8 +6,7 @@ from launch.substitutions import Command, LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
-## Using the choices argument to DeclareLaunchDescription, restrict the value of color to be only the valid values (supported colors and empty "").
-## jsp gui or actual? 
+
 def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -31,15 +30,15 @@ def generate_launch_description():
             name='use_jsp',
             default_value='true',
             choices=['true', 'false'],
-            description='Choices for joint state publisher gui, defaults to true'),
+            description='Choices for joint state publisher, defaults to true'),
         DeclareLaunchArgument(
             name='use_rviz',
             default_value='true',
             choices=['true', 'false'],
             description='Choices for whether to launch rviz, defaults to true'),
         Node(
-            package='joint_state_publisher_gui',
-            executable='joint_state_publisher_gui',
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
             namespace=LaunchConfiguration('color'),
             condition=LaunchConfigurationEquals('use_jsp', 'true')
         ),
