@@ -72,32 +72,34 @@
       <geometry>
         <mesh filename="package://nuturtle_description/meshes/burger_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <xacro:if value="${color == purple}">
+      <xacro:if value="${color == 'purple'}">
         <material name="purple">
           <color rgba="0.3 0.16 0.52 1.0"/>
         </material>
       </xacro:if>
-      <xacro:if value="${color == red}">
+      <xacro:if value="${color == 'red'}">
         <material name="red" />
       </xacro:if>
-      <xacro:if value="${color == blue}">
-        <material name="red" />
+      <xacro:if value="${color == 'blue'}">
+        <material name="blue" />
       </xacro:if>
-      <xacro:if value="${color == green}">
-        <material name="red" />
+      <xacro:if value="${color == 'green'}">
+        <material name="green" />
       </xacro:if>
     </visual>
 
     <collision>
       <origin xyz="-0.032 0 0.070" rpy="0 0 0"/>
-      <geometry>
-        <xacro:if value="${collision_radius &lt; 0.0}">
+      <xacro:if value="${collision_radius &lt; 0.0}">
+        <geometry>
           <box size="0.140 0.140 0.143"/>
-        </xacro:if>
-        <xacro:unless value="${collision_radius &gt; 0.0}">
+        </geometry>
+      </xacro:if>
+      <xacro:if value="${collision_radius &gt; 0.0}">
+        <geometry>
           <cylinder radius="0.140" length="0.143"/>
-        </xacro:unless>
-      </geometry>
+        </geometry>
+      </xacro:if>
     </collision>
 
     <inertial>

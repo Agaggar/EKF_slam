@@ -6,9 +6,16 @@ from launch.substitutions import Command, LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterValue
 
-
+## Using the choices argument to DeclareLaunchDescription, restrict the value of color to be only the valid values (supported colors and empty "").
+## jsp gui or actual? 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument(
+            name='color',
+            default_value='purple',
+            choices=['red', 'green', 'blue', 'purple'],
+            description='Choices for the color of baselink, and the name of the' \
+                'namespace; defaults to purple.'),
         DeclareLaunchArgument(
                 name='model',
                 default_value=str(
@@ -17,9 +24,8 @@ def generate_launch_description():
                 description='Absolute path to robot urdf file'),
         DeclareLaunchArgument(
             name='rvizconfig',
-            default_value=str(
-                get_package_share_path('nuturtle_description') \
-                    / 'config/basic_purple.rviz'),
+            default_value=[str(get_package_share_path('nuturtle_description')), \
+                    '/config/basic_', LaunchConfiguration('color'), '.rviz'],
             description='Absolute path to rviz config file'),
         DeclareLaunchArgument(
             name='use_jsp',
@@ -31,14 +37,8 @@ def generate_launch_description():
             default_value='true',
             choices=['true', 'false'],
             description='Choices for whether to launch rviz, defaults to true'),
-        DeclareLaunchArgument(
-            name='color',
-            default_value='purple',
-            choices=['red', 'green', 'blue', 'purple'],
-            description='Choices for the color of baselink, and the name of the' \
-                'namespace; defaults to purple.'),
         Node(
-            package='joint_state_publisher_gui', # use gui or actual? 
+            package='joint_state_publisher_gui',
             executable='joint_state_publisher_gui',
             namespace=LaunchConfiguration('color'),
             condition=LaunchConfigurationEquals('use_jsp', 'true')
@@ -47,17 +47,19 @@ def generate_launch_description():
             package='robot_state_publisher',
             executable='robot_state_publisher',
             namespace=LaunchConfiguration('color'),
-            parameters=[{
-                'robot_description': ParameterValue(Command(
-                        ['xacro ', LaunchConfiguration('model'), ' variable:=', TextSubstitution(text=LaunchConfiguration('color'))]), # change color to a variable
-                    value_type=str)}]
+            parameters=[
+                {'robot_description': ParameterValue(Command(
+                        ['xacro ', LaunchConfiguration('model'), ' color:=', LaunchConfiguration('color')]),
+                        value_type=str)},
+                {'frame_prefix': [LaunchConfiguration('color'), '/']}
+            ]
         ),
         Node(
             package='rviz2',
             executable='rviz2',
             name='rviz2',
             namespace=LaunchConfiguration('color'),
-            arguments=['-d', LaunchConfiguration('rvizconfig')],
+            arguments=['-d', LaunchConfiguration('rvizconfig'), '-f', [LaunchConfiguration('color'), '/base_footprint']],
             condition=LaunchConfigurationEquals('use_rviz', 'true'),
             on_exit=Shutdown()
         )
