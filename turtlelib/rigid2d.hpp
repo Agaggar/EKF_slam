@@ -79,6 +79,14 @@ namespace turtlelib
 
         /// \brief the y coordinate
         double y = 0.0;
+
+        /// \brief normalize vector
+        /// \return void (this vector is modified)
+        void normalize() {
+            double mag = sqrt(pow(x,2) + pow(y, 2));
+            x = x/mag;
+            y = y/mag; 
+        };
     };
 
     /// \brief A 2-D Twist
@@ -160,6 +168,8 @@ namespace turtlelib
             {
                 // logic goes here
             }
+        
+        MOVE EVERYTHING TO CPP
         */
     public:
         /// \brief Create an identity transformation
@@ -167,7 +177,7 @@ namespace turtlelib
 
         /// \brief create a transformation that is a pure translation
         /// \param trans - the vector by which to translate
-        explicit Transform2D(Vector2D trans) {
+        explicit Transform2D(const Vector2D& trans) {
             r31 = trans.x;
             r32 = trans.y;
         };
@@ -185,7 +195,7 @@ namespace turtlelib
         /// component
         /// \param trans - the translation
         /// \param rot - the rotation, in radians
-        Transform2D(Vector2D trans, double radians) {
+        Transform2D(const Vector2D& trans, double radians) {
             r11 = cos(radians);
             r12 = -1*sin(radians);
             r21 = sin(radians);
@@ -197,7 +207,7 @@ namespace turtlelib
         /// \brief apply a transformation to a Vector2D
         /// \param v - the vector to transform
         /// \return a vector in the new coordinate system
-        Vector2D operator()(Vector2D v) const {
+        Vector2D operator()(const Vector2D& v) const {
             Vector2D tran_vec;
             tran_vec.x = r11 * v.x + r12 * v.y + r13;
             tran_vec.y = r21 * v.x + r22 * v.y + r23;
@@ -269,7 +279,7 @@ namespace turtlelib
 
         /// \brief convert twist to a different reference frame
         /// \return the same twist, represented in the new frame
-        Twist2D conv_diff_frame(Twist2D new_frame) {
+        Twist2D conv_diff_frame(const Twist2D& new_frame) {
             Twist2D new_twist = new_frame;
             new_twist.linearx = adj().r21*new_frame.angular + adj().r22*new_frame.linearx + adj().r23*new_frame.lineary;
             new_twist.lineary = adj().r31*new_frame.angular + adj().r32*new_frame.linearx + adj().r33*new_frame.lineary;
