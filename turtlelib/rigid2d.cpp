@@ -13,6 +13,7 @@ namespace turtlelib {
             is.get();
         }
         is >> v.x >> v.y;
+        std::cin.ignore(50, '\n');
         return is;
     }
 
@@ -26,6 +27,7 @@ namespace turtlelib {
             is.get();
         }
         is >> t.angular >> t.linearx >> t.lineary;
+        std::cin.ignore(50, '\n');
         return is;
     };
 }
@@ -36,11 +38,12 @@ int main(void) {
     std::cin >> myvec;
     std::cout << myvec << std::endl;
     std::cin.clear();
-    std::cin.ignore(50, '\n');
 
     turtlelib::Twist2D mytwist;
     std::cout << "enter the twist you'd like to save: ";
     std::cin >> mytwist;
     std::cout << mytwist << std::endl;
+    
+    // turtlelib::Transform2D::Transform2D();
     return 0;
 }

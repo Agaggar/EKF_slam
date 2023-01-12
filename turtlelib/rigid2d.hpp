@@ -6,6 +6,7 @@
 
 #include<iosfwd> // contains forward definitions for iostream objects
 #include <cstdlib> // standard library, use for absolute value
+#include <math.h> // standard math library, used for sin and cos in transformations
 
 namespace turtlelib
 {
@@ -137,22 +138,46 @@ namespace turtlelib
     class Transform2D
     {
     public:
+        double r11 = 1.0;
+        double r12 = 0.0;
+        double r13 = 0.0;
+        double r21 = 0.0;
+        double r22 = 1.0;
+        double r23 = 0.0;
+        double r31 = 0.0;
+        double r32 = 0.0;
+        double r33 = 1.1;
         /// \brief Create an identity transformation
-        Transform2D();
+        Transform2D() {};
 
         /// \brief create a transformation that is a pure translation
         /// \param trans - the vector by which to translate
-        explicit Transform2D(Vector2D trans);
+        explicit Transform2D(Vector2D trans) {
+            r31 = trans.x;
+            r32 = trans.y;
+        };
 
         /// \brief create a pure rotation
         /// \param radians - angle of the rotation, in radians
-        explicit Transform2D(double radians);
+        explicit Transform2D(double radians) {
+            r11 = cos(radians);
+            r12 = -1*sin(radians);
+            r21 = sin(radians);
+            r22 = cos(radians);
+        };
 
         /// \brief Create a transformation with a translational and rotational
         /// component
         /// \param trans - the translation
         /// \param rot - the rotation, in radians
-        Transform2D(Vector2D trans, double radians);
+        Transform2D(Vector2D trans, double radians) {
+            r11 = cos(radians);
+            r12 = -1*sin(radians);
+            r21 = sin(radians);
+            r22 = cos(radians);
+            r13 = trans.x;
+            r23 = trans.y;
+        };
 
         /// \brief apply a transformation to a Vector2D
         /// \param v - the vector to transform
@@ -162,7 +187,16 @@ namespace turtlelib
 
         /// \brief invert the transformation
         /// \return the inverse transformation. 
-        Transform2D inv() const;
+        Transform2D inv() const {
+            Transform2D r = Transform2D();
+            r.r11 = *this->r11;
+            r.r12 = *this.r21;
+            r.r13 = -1*(*this.r13 * *this.r11 + *this.r23 * *this.r21);
+            r.r21 = *this.r12;
+            r.r22 = *this.r22;
+            r.r23 = -1 * *this.r23 * *this.r11 + *this.r13 * *this.r21;
+            return r;
+        };
 
         /// \brief compose this transform with another and store the result 
         /// in this object
