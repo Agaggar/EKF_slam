@@ -137,16 +137,31 @@ namespace turtlelib
     /// \brief a rigid body transformation in 2 dimensions
     class Transform2D
     {
+        private:    
+            double r11 = 1.0;
+            double r12 = 0.0;
+            double r13 = 0.0;
+            double r21 = 0.0;
+            double r22 = 1.0;
+            double r23 = 0.0;
+            double r31 = 0.0;
+            double r32 = 0.0;
+            double r33 = 1.1;
+
+        /*
+        + note that order huggeeelllyyy matters --> keep order of initialization in constructor the same as order in initializer list
+        + what is the "this" syntax
+
+        example:
+            Transform2D():
+                r11(1.0);
+                r22(1.0);
+                r33(1.0);
+            {
+                // logic goes here
+            }
+        */
     public:
-        double r11 = 1.0;
-        double r12 = 0.0;
-        double r13 = 0.0;
-        double r21 = 0.0;
-        double r22 = 1.0;
-        double r23 = 0.0;
-        double r31 = 0.0;
-        double r32 = 0.0;
-        double r33 = 1.1;
         /// \brief Create an identity transformation
         Transform2D() {};
 
@@ -182,35 +197,84 @@ namespace turtlelib
         /// \brief apply a transformation to a Vector2D
         /// \param v - the vector to transform
         /// \return a vector in the new coordinate system
-        Vector2D operator()(Vector2D v) const;
+        Vector2D operator()(Vector2D v) const {
+            Vector2D tran_vec;
+            tran_vec.x = r11 * v.x + r12 * v.y + r13;
+            tran_vec.y = r21 * v.x + r22 * v.y + r23;
+            return tran_vec;
+        };
 
 
         /// \brief invert the transformation
         /// \return the inverse transformation. 
         Transform2D inv() const {
-            Transform2D r = Transform2D();
-            r.r11 = *this->r11;
-            r.r12 = *this.r21;
-            r.r13 = -1*(*this.r13 * *this.r11 + *this.r23 * *this.r21);
-            r.r21 = *this.r12;
-            r.r22 = *this.r22;
-            r.r23 = -1 * *this.r23 * *this.r11 + *this.r13 * *this.r21;
-            return r;
+            Transform2D inv_trans = *this;
+            inv_trans.r12 = r21;
+            inv_trans.r13 = -1*(r13 * r11 + r23 * r21);
+            inv_trans.r21 = r12;
+            inv_trans.r23 = -1 * r23 * r11 + r13 * r21;
+            return inv_trans;
         };
 
         /// \brief compose this transform with another and store the result 
         /// in this object
         /// \param rhs - the first transform to apply
-        /// \return a reference to the newly transformed operator
-        Transform2D & operator*=(const Transform2D & rhs);
+        /// \return a *reference* to the newly transformed operator
+        ///     this is because the function is "Transform2D &" and not just "Transform2D"
+        Transform2D & operator*=(const Transform2D & rhs) {
+            Transform2D temp = *this;
+            temp.r11 = r11*rhs.r11 + r12*rhs.r21 + r13*rhs.r31;
+            temp.r12 = r11*rhs.r12 + r12*rhs.r22 + r13*rhs.r32;
+            temp.r13 = r11*rhs.r13 + r12*rhs.r23 + r13*rhs.r33;
+            temp.r21 = r21*rhs.r11 + r22*rhs.r21 + r23*rhs.r31;
+            temp.r22 = r21*rhs.r12 + r22*rhs.r22 + r23*rhs.r32;
+            temp.r23 = r21*rhs.r13 + r22*rhs.r23 + r23*rhs.r33;
+            temp.r31 = r31*rhs.r11 + r32*rhs.r21 + r33*rhs.r31;
+            temp.r32 = r31*rhs.r12 + r32*rhs.r22 + r33*rhs.r32;
+            temp.r33 = r31*rhs.r13 + r32*rhs.r23 + r33*rhs.r33;
+            *this = temp;
+            return *this;
+        };
 
         /// \brief the translational component of the transform
         /// \return the x,y translation
-        Vector2D translation() const;
+        Vector2D translation() const {
+            Vector2D tran_trans;
+            tran_trans.x = r13;
+            tran_trans.y = r23;
+            return tran_trans;
+        };
 
         /// \brief get the angular displacement of the transform
         /// \return the angular displacement, in radians
-        double rotation() const;
+        double rotation() const {
+            return acos(r11);
+        };
+
+        /// \brief get the adjoint for this transformation
+        /// \return 2D adjoint matrix
+        Transform2D adj() const {
+            Transform2D temp = *this;
+            temp.r11 = 1.0;
+            temp.r12 = 0.0;
+            temp.r13 = 0.0;
+            temp.r21 = r23;
+            temp.r22 = r11;
+            temp.r23 = r12;
+            temp.r31 = -1*r13;
+            temp.r32 = r21;
+            temp.r33 = r22;
+            return temp;
+        };
+
+        /// \brief convert twist to a different reference frame
+        /// \return the same twist, represented in the new frame
+        Twist2D conv_diff_frame(Twist2D new_frame) {
+            Twist2D new_twist = new_frame;
+            new_twist.linearx = adj().r21*new_frame.angular + adj().r22*new_frame.linearx + adj().r23*new_frame.lineary;
+            new_twist.lineary = adj().r31*new_frame.angular + adj().r32*new_frame.linearx + adj().r33*new_frame.lineary;
+            return new_twist;
+        };
 
         /// \brief \see operator<<(...) (declared outside this class)
         /// for a description
