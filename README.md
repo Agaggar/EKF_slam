@@ -42,39 +42,20 @@ A library for handling transformations in SE(2) and other turtlebot-related math
         I would use the first method that I described, since it's the most logical (to me), and is optimal if vector normalization occurs, but only infrequently.
 
 2. What is the difference between a class and a struct in C++?
+     There is no difference between a class and a struct *except* structs have all member variables public by default.
 
 
 3. Why is Vector2D a struct and Transform2D a Class (refer to at least 2 specific C++ core guidelines in your answer)?
+     The primary reason is due to C++ core guideline C.2, which says that since Transform2D has variables that should be private (and thus its class variables should not vary independently), Transform 2D should be a class; on the other hand, since Vector2D can independently vary its x and y, it should be a struct.
+     Additionally, the design choice here is to make the member variables of class Transform2D private, so only its own objects can access those variables. As per guideline C.8, a class must be used rather than a struct any time a member is non-public.
 
 
 4. Why are some of the constructors in Transform2D explicit (refer to a specific C++ core guideline in your answer)?
+     As per guideline C.46, single argument constructors should, by default, use the "explicit" keyword to avoid any unintended conversions.
 
 
 5. Why is Transform2D::inv() declared const while Transform2D::operator*=() is not?
    - Refer to [[https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#con-constants-and-immutability][C++ Core Guidelines (Constants and Immutability)]] in your answer
+   By default, member functions in a class should be declared as const. However, since the overloaded Transform2D::operator*=() is modifying the "this" object of the class, the function cannot be declared constant. As per guidleine Con.2, "a member function should be marked const unless it changes the object’s observable state"; the *= operator is modifying the Transform2D object itself, and so should not be defined as a const function.
 
 Worked With <List anyone you worked with here or change to nobody if nobody>
-
-
-
- Enter transform T_{a,b}:
->deg: 90 x: 0 y: 1
- Enter transform T_{b,c}:
->deg: 90 x: 1 y: 0
- T_{a,b}: deg: 90 x: 0 y: 1
- T_{b,a}: deg: -90 x: -1 y: -6.12323e-17
- T_{b,c}: deg: 90 x: 1 y: 0
- T_{c,b}: deg: -90 x: -6.12323e-17 y: 1
- T_{a,c}: deg: 180 x: 6.12323e-17 y: 2
- T_{c,a}: deg: -180 x: -1.83697e-16 y: 2
- Enter vector v_b:
->1 1
- v_bhat: [0.707107 0.707107]
- v_a: [-1 2]
- v_b: [1 1]
- v_c: [1 1.11022e-16]
- Enter twist V_b:
->1 1 1
- V_a [1 0 1]
- V_b [1 1 1]
- V_c [1 2 -1]

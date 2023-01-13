@@ -166,8 +166,6 @@ namespace turtlelib
             {
                 // logic goes here
             }
-        
-        MOVE EVERYTHING TO CPP
         */
     public:
         /// \brief Create an identity transformation
@@ -217,7 +215,7 @@ namespace turtlelib
 
         /// \brief convert twist to a different reference frame
         /// \return the same twist, represented in the new frame
-        Twist2D conv_diff_frame(const Twist2D& new_frame);
+        Twist2D conv_diff_frame(const Twist2D& new_frame) const;
 
         /// \brief \see operator<<(...) (declared outside this class)
         /// for a description

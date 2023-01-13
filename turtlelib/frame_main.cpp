@@ -27,7 +27,6 @@ namespace turtlelib {
     };
 
     Transform2D::Transform2D(const Vector2D& trans, double radians):
-        // r11(cos(radians));
         rot(radians)
         {
         r11 = cos(radians);
@@ -97,7 +96,7 @@ namespace turtlelib {
         return temp;
     };
 
-    Twist2D Transform2D::conv_diff_frame(const Twist2D& new_frame) {
+    Twist2D Transform2D::conv_diff_frame(const Twist2D& new_frame) const {
         Twist2D new_twist = new_frame;
         Transform2D tran_adj = adj();
         new_twist.linearx = tran_adj.r21*new_frame.angular + tran_adj.r22*new_frame.linearx + tran_adj.r23*new_frame.lineary;
@@ -120,36 +119,8 @@ namespace turtlelib {
         return is;
     };
 
-    std::ostream & operator<<(std::ostream & os, const Vector2D & v) {
-        return os << "[" << v.x << " " << v.y << "]";
-    };
-
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs) {
         return lhs*=rhs;
-    };
-
-    std::istream & operator>>(std::istream & is, Vector2D & v) {
-        char c1 = is.peek();
-        if (c1 == '[') {
-            is.get();
-        }
-        is >> v.x >> v.y;
-        std::cin.ignore(50, '\n');
-        return is;
-    };
-
-    std::ostream & operator<<(std::ostream & os, const Twist2D & t) {
-        return os << "[" << t.angular << " " << t.linearx << " " << t.lineary << "]";
-    };
-
-    std::istream & operator>>(std::istream & is, Twist2D & t) {
-        char c1 = is.peek();
-        if (c1 == '[') {
-            is.get();
-        }
-        is >> t.angular >> t.linearx >> t.lineary;
-        std::cin.ignore(50, '\n');
-        return is;
     };
     
 }
