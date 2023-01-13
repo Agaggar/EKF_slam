@@ -213,19 +213,7 @@ namespace turtlelib
 
         /// \brief get the adjoint for this transformation
         /// \return 2D adjoint matrix
-        Transform2D adj() const {
-            Transform2D temp = *this;
-            temp.r11 = 1.0;
-            temp.r12 = 0.0;
-            temp.r13 = 0.0;
-            temp.r21 = r23;
-            temp.r22 = r11;
-            temp.r23 = r12;
-            temp.r31 = -1*r13;
-            temp.r32 = r21;
-            temp.r33 = r22;
-            return temp;
-        };
+        Transform2D adj() const;
 
         /// \brief convert twist to a different reference frame
         /// \return the same twist, represented in the new frame
@@ -234,8 +222,6 @@ namespace turtlelib
         /// \brief \see operator<<(...) (declared outside this class)
         /// for a description
         friend std::ostream & operator<<(std::ostream & os, const Transform2D & tf);
-
-        // friend std::istream & operator>>(std::istream & is, Transform2D & tf);
 
     };
 
@@ -260,7 +246,6 @@ namespace turtlelib
     /// \return the composition of the two transforms
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
-
 
 
 }

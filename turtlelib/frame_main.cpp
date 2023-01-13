@@ -3,20 +3,21 @@
 
 namespace turtlelib {
     Vector2D Vector2D::normalize() {
+            Vector2D normalize = *this;
             double mag = sqrt(pow(x,2) + pow(y, 2));
-            x = x/mag;
-            y = y/mag;
-            return *this;
+            normalize.x = normalize.x/mag;
+            normalize.y = normalize.y/mag;
+            return normalize;
     };
 
     Transform2D::Transform2D() {};
 
-    explicit Transform2D::Transform2D(const Vector2D& trans) {
+    Transform2D::Transform2D(const Vector2D& trans) {
             r31 = trans.x;
             r32 = trans.y;
     };
 
-    explicit Transform2D::Transform2D(double radians):
+    Transform2D::Transform2D(double radians):
         rot(radians) 
         {
         r11 = cos(radians);
@@ -66,7 +67,7 @@ namespace turtlelib {
         temp.r31 = r31*rhs.r11 + r32*rhs.r21 + r33*rhs.r31;
         temp.r32 = r31*rhs.r12 + r32*rhs.r22 + r33*rhs.r32;
         temp.r33 = r31*rhs.r13 + r32*rhs.r23 + r33*rhs.r33;
-        temp.rot = temp.rotation();
+        temp.rot = acos(temp.r11);
         *this = temp;
         return *this;
     };
@@ -82,10 +83,25 @@ namespace turtlelib {
         return rot;
     };
 
+    Transform2D Transform2D::adj() const {
+        Transform2D temp = *this;
+        temp.r11 = 1.0;
+        temp.r12 = 0.0;
+        temp.r13 = 0.0;
+        temp.r21 = r23;
+        temp.r22 = r11;
+        temp.r23 = r12;
+        temp.r31 = -1*r13;
+        temp.r32 = r21;
+        temp.r33 = r22;
+        return temp;
+    };
+
     Twist2D Transform2D::conv_diff_frame(const Twist2D& new_frame) {
         Twist2D new_twist = new_frame;
-        new_twist.linearx = adj().r21*new_frame.angular + adj().r22*new_frame.linearx + adj().r23*new_frame.lineary;
-        new_twist.lineary = adj().r31*new_frame.angular + adj().r32*new_frame.linearx + adj().r33*new_frame.lineary;
+        Transform2D tran_adj = adj();
+        new_twist.linearx = tran_adj.r21*new_frame.angular + tran_adj.r22*new_frame.linearx + tran_adj.r23*new_frame.lineary;
+        new_twist.lineary = tran_adj.r31*new_frame.angular + tran_adj.r32*new_frame.linearx + tran_adj.r33*new_frame.lineary;
         return new_twist;
     };
 
