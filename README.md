@@ -54,3 +54,27 @@ A library for handling transformations in SE(2) and other turtlebot-related math
    - Refer to [[https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#con-constants-and-immutability][C++ Core Guidelines (Constants and Immutability)]] in your answer
 
 Worked With <List anyone you worked with here or change to nobody if nobody>
+
+
+
+ Enter transform T_{a,b}:
+>deg: 90 x: 0 y: 1
+ Enter transform T_{b,c}:
+>deg: 90 x: 1 y: 0
+ T_{a,b}: deg: 90 x: 0 y: 1
+ T_{b,a}: deg: -90 x: -1 y: -6.12323e-17
+ T_{b,c}: deg: 90 x: 1 y: 0
+ T_{c,b}: deg: -90 x: -6.12323e-17 y: 1
+ T_{a,c}: deg: 180 x: 6.12323e-17 y: 2
+ T_{c,a}: deg: -180 x: -1.83697e-16 y: 2
+ Enter vector v_b:
+>1 1
+ v_bhat: [0.707107 0.707107]
+ v_a: [-1 2]
+ v_b: [1 1]
+ v_c: [1 1.11022e-16]
+ Enter twist V_b:
+>1 1 1
+ V_a [1 0 1]
+ V_b [1 1 1]
+ V_c [1 2 -1]
