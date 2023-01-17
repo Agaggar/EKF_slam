@@ -17,7 +17,7 @@ A library for handling transformations in SE(2) and other turtlebot-related math
    - Discuss the pros and cons of each proposed method, in light of the C++ Core Guidelines.
         1) pro: simple straight forward logic; con: more than one logical operator inside function, a little more costly at runtime per transaction
         2) pro: all vectors are normalized (useful if you will end up normalizing *every* vector anyways). cons: YAGNI - costly if vector normalization isn't used too often, as these operations will happen for every single vector that's initialized
-        3) pro: simple implementation, cons: doing #include copies entire library into code, which takes far more memory; also, you're using code that you have not written personally, so there's a greater chance of acccidentally implementing the method incorrectly. 
+        3) pro: simple implementation, cons: using # include copies entire library into code, which takes far more memory; also, you're using code that you have not written personally, so there's a greater chance of acccidentally implementing the method incorrectly. 
 
    - Which of the methods would you implement and why?
         I would use the first method that I described, since it's the most logical (to me), and is optimal if vector normalization occurs, but only infrequently.

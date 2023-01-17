@@ -100,22 +100,22 @@ namespace turtlelib
     };
 
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
-    /// os - stream to output to
-    /// v - the vector to print
+    /// \param os - stream to output to
+    /// \param t - the twist to print
     std::ostream & operator<<(std::ostream & os, const Twist2D & t);
 
     /// \brief input a 2 dimensional twist
     ///   entered as follows:
     ///   [w x y] or w x y
     /// \param is - stream from which to read
-    /// \param v [out] - output vector
+    /// \param t [out] - output twist
     ///
     std::istream & operator>>(std::istream & is, Twist2D & t);
 
 
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
-    /// os - stream to output to
-    /// v - the vector to print
+    /// \param os - stream to output to
+    /// \param v - the vector to print
     std::ostream & operator<<(std::ostream & os, const Vector2D & v);
 
     /// \brief input a 2 dimensional vector
@@ -182,7 +182,7 @@ namespace turtlelib
         /// \brief Create a transformation with a translational and rotational
         /// component
         /// \param trans - the translation
-        /// \param rot - the rotation, in radians
+        /// \param radians - the rotation, in radians
         Transform2D(const Vector2D& trans, double radians);
 
         /// \brief apply a transformation to a Vector2D
