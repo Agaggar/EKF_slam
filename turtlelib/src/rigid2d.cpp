@@ -2,7 +2,7 @@
 #include <iostream>
 
 namespace turtlelib {
-    Vector2D Vector2D::normalize() {
+        Vector2D Vector2D::normalize() {
             Vector2D normalize = *this;
             double mag = sqrt(pow(x,2) + pow(y, 2));
             normalize.x = normalize.x/mag;
@@ -122,43 +122,49 @@ namespace turtlelib {
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs) {
         return lhs*=rhs;
     };
-    
+ 
+
+    std::ostream & operator<<(std::ostream & os, const Vector2D & v) {
+        return os << "[" << v.x << " " << v.y << "]";
+    }
+
+    std::istream & operator>>(std::istream & is, Vector2D & v) {
+        char c1 = is.peek();
+        if (c1 == '[') {
+            is.get();
+        }
+        is >> v.x >> v.y;
+        std::cin.ignore(50, '\n');
+        return is;
+    }
+
+    std::ostream & operator<<(std::ostream & os, const Twist2D & t) {
+        return os << "[" << t.angular << " " << t.linearx << " " << t.lineary << "]";
+    };
+
+    std::istream & operator>>(std::istream & is, Twist2D & t) {
+        char c1 = is.peek();
+        if (c1 == '[') {
+            is.get();
+        }
+        is >> t.angular >> t.linearx >> t.lineary;
+        std::cin.ignore(50, '\n');
+        return is;
+    };
 }
 
-int main(void) {
-    turtlelib::Transform2D T_ab, T_bc;
-    std::cout << "Enter transform T_{a,b}): ";
-    std::cin >> T_ab;
-    std::cout << T_ab << std::endl;
+// int main(void) {
+//     turtlelib::Vector2D myvec;
+//     std::cout << "enter the vector you'd like to save: ";
+//     std::cin >> myvec;
+//     std::cout << myvec << std::endl;
+//     std::cin.clear();
 
-    std::cout << "Enter transform T_{b,c}): ";
-    std::cin >> T_bc;
-    std::cout << T_bc << std::endl;
-
-    std::cout << "T_{a,b}): " << T_ab << std::endl;
-    std::cout << "T_{b,a}): " << T_ab.inv() << std::endl;
-    std::cout << "T_{b,c}): " << T_bc << std::endl;
-    std::cout << "T_{c,b}): " << T_bc.inv() << std::endl;
-    turtlelib::Transform2D T_ac = T_ab;
-    T_ac*=T_bc;
-    std::cout << "T_{a,c}): " << T_ac << std::endl;
-    std::cout << "T_{c,a}): " << T_ac.inv() << std::endl;
-
-    turtlelib::Vector2D v_b;
-    std::cout << "Enter vector v_b: ";
-    std::cin >> v_b;
-    std::cout << "v_bhat: " << v_b.normalize() << std::endl;
-    std::cout << "v_a: " << T_ab(v_b) << std::endl;
-    std::cout << "v_b: " << v_b << std::endl;
-    std::cout << "v_c: " << (T_bc.inv())(v_b) << std::endl;
-
-    turtlelib::Twist2D V_b;
-    std::cout << "Enter twist V_b: ";
-    std::cin >> V_b;
-    std::cout << "V_a: " << T_ab.conv_diff_frame(V_b) << std::endl;
-    std::cout << "V_b: " << V_b << std::endl;
-    std::cout << "V_c: " << (T_bc.inv()).conv_diff_frame(V_b) << std::endl;
+//     turtlelib::Twist2D mytwist;
+//     std::cout << "enter the twist you'd like to save: ";
+//     std::cin >> mytwist;
+//     std::cout << mytwist << std::endl;
     
-    // turtlelib::Transform2D::Transform2D();
-    return 0;
-}
+//     // turtlelib::Transform2D::Transform2D();
+//     return 0;
+// }
