@@ -18,7 +18,7 @@ namespace turtlelib {
     };
 
     Transform2D::Transform2D(double radians):
-        rot(radians) 
+        rot(radians)
         {
         r11 = cos(radians);
         r12 = -1*sin(radians);

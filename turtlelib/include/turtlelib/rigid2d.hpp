@@ -151,7 +151,7 @@ namespace turtlelib
             double r23 = 0.0;
             double r31 = 0.0;
             double r32 = 0.0;
-            double r33 = 1.1;
+            double r33 = 1.0;
             double rot = 0.0;
 
         /*
