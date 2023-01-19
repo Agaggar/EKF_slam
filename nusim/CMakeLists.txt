@@ -9,10 +9,12 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
+find_package(rcl_interfaces REQUIRED)
 
 add_executable(nusim src/nusim.cpp)
 # target_link_libraries(nusim rclcpp std_msgs)
-ament_target_dependencies(nusim rclcpp std_msgs)
+ament_target_dependencies(nusim rclcpp std_msgs std_srvs rcl_interfaces)
 
 install(
   TARGETS nusim
