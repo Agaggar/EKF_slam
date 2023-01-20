@@ -11,10 +11,21 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2 REQUIRED)
 
 add_executable(nusim src/nusim.cpp)
 # target_link_libraries(nusim rclcpp std_msgs)
-ament_target_dependencies(nusim rclcpp std_msgs std_srvs rcl_interfaces)
+ament_target_dependencies(
+  nusim 
+  rclcpp 
+  std_msgs 
+  std_srvs 
+  rcl_interfaces
+  geometry_msgs
+  tf2_ros
+  tf2)
 
 install(
   TARGETS nusim
