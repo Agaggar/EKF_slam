@@ -13,13 +13,15 @@ class Nusim : public rclcpp::Node
             Node("nusim"),
             timestep(0)
         {
+            double rate = 200.0;
             rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
             rate_param_desc.name = "rate";
             rate_param_desc.type = 3; // rate is a double
             rate_param_desc.description = "simulation refresh rate (hz)";
-            declare_parameter("rate", rclcpp::ParameterValue(200.0), rate_param_desc); // defaults to 200
+            declare_parameter("rate", rclcpp::ParameterValue(rate), rate_param_desc); // defaults to 200
+            get_parameter("rate", rate);
             timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
-            timer_ = create_wall_timer(std::chrono::milliseconds(5ms), std::bind(&Nusim::timer_callback, this));
+            timer_ = create_wall_timer(std::chrono::milliseconds(int(1.0/rate*1000)), std::bind(&Nusim::timer_callback, this));
             reset_srv_ = create_service<std_srvs::srv::Empty>(
                 "~/reset", 
                 std::bind(&Nusim::reset, this, std::placeholders::_1, std::placeholders::_2));
