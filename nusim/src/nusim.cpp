@@ -22,7 +22,7 @@ class Nusim : public rclcpp::Node
             rate_param_desc.type = 3; // rate is a double
             rate_param_desc.description = "simulation refresh rate (hz)";
             declare_parameter("rate", rclcpp::ParameterValue(rate), rate_param_desc); // defaults to 200
-            double rate = get_parameter("rate").get_parameter_value().get<std::double_t>();
+            get_parameter("rate", rate);
             double x0 = 0.0;
             rcl_interfaces::msg::ParameterDescriptor x0_param_desc;
             x0_param_desc.name = "x0";
@@ -45,22 +45,7 @@ class Nusim : public rclcpp::Node
             declare_parameter("theta0", rclcpp::ParameterValue(theta0), theta0_param_desc); // defaults to 0.0
             get_parameter("theta0", theta0);
 
-            RCLCPP_INFO(get_logger(), "stuff: %d, %d, %d, %d", rate, x0, y0, theta0);
-
-            geometry_msgs::msg::TransformStamped t;
-            t.header.stamp = get_clock()->now();
-            t.header.frame_id = "nusim/world";
-            t.child_frame_id = "red/base_footprint";
-            t.transform.translation.x = x0;
-            t.transform.translation.y = y0;
-            t.transform.translation.z = 0.0;
-            tf2::Quaternion q;
-            q.setRPY(0, 0, theta0);
-            t.transform.rotation.x = q.x();
-            t.transform.rotation.y = q.y();
-            t.transform.rotation.z = q.z();
-            t.transform.rotation.w = q.w();
-            // std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+            RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
             tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
             timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
             timer_ = create_wall_timer(std::chrono::milliseconds(int(1.0/rate*1000)), std::bind(&Nusim::timer_callback, this));
@@ -75,23 +60,35 @@ class Nusim : public rclcpp::Node
             ts.data = timestep;
             // RCLCPP_INFO_STREAM(rclcpp::get_logger("rclcpp"), "Publish count " << this->count_);
             // RCLCPP_INFO(get_logger(), "stuff: %ld", timestep);
-            timestep_pub_->publish(ts);
+            timestep_pub_->publish(ts);\
             t.header.stamp = get_clock()->now();
+            t.header.frame_id = "nusim/world";
+            t.child_frame_id = "red/base_footprint";
+            t.transform.translation.x = get_parameter_or("x0", 0.0);
+            t.transform.translation.y = get_parameter_or("y0", 0.0);
+            t.transform.translation.z = 0.0;
+            q.setRPY(0, 0, get_parameter_or("theta0", 0.0));
+            t.transform.rotation.x = q.x();
+            t.transform.rotation.y = q.y();
+            t.transform.rotation.z = q.z();
+            t.transform.rotation.w = q.w();
             tf2_rostf_broadcaster_->sendTransform(t);
             timestep += 1;
+            RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
         }
         void reset(const std_srvs::srv::Empty::Request::SharedPtr request, 
                     const std_srvs::srv::Empty::Response::SharedPtr response) {
             RCLCPP_INFO(get_logger(), "Resetting...");
             timestep = 0;
         }
-        size_t timestep;
+        size_t timestep = 0.0;
         std_msgs::msg::UInt64 ts;
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
         rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
         std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
         geometry_msgs::msg::TransformStamped t;
+        tf2::Quaternion q;
 };
 
 int main(int argc, char* argv[])
