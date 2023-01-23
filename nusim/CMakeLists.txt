@@ -40,7 +40,14 @@ ament_export_dependencies(rosidl_default_runtime)
 
 install(
   TARGETS nusim
-  DESTINATION lib/nusim
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY
+  launch 
+  config
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 ament_package()
