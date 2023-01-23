@@ -1,6 +1,6 @@
 nusim:
   ros__parameters:
-    cyl_radius: 0.38 # m
+    cyl_radius: 0.038 # m
     x0: -0.6 # m, robot
     y0: 0.8 # m, robot
     z0: 1.57 # m, robot

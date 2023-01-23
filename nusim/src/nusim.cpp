@@ -23,7 +23,9 @@ public:
     theta0(0.0),
     cyl_radius(0.038),
     cyl_height(0.25),
-    obs_x({0.2, 0.0, 0.0})
+    obs_x(std::vector<double> {0.0}),
+    obs_y(std::vector<double> {0.0})
+    // obs_y({0.2, 0.0, 0.0})
     // obs_x({-0.6, 0.7, 0.5})
   {
     double rate = 200.0;
@@ -61,12 +63,21 @@ public:
     cyl_radius_param_desc.description = "radius of cylinder obstacles (m)";
     declare_parameter("cyl_radius", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.038
     get_parameter("cyl_radius", cyl_radius);
+    
+    // std::vector<double> obs_x = {};
     rcl_interfaces::msg::ParameterDescriptor obs_x_param_desc;
     obs_x_param_desc.name = "obstacles.x";
     obs_x_param_desc.type = 8; // double array
     obs_x_param_desc.description = "x coordinates of cylinder obstacles (m)";
     declare_parameter("obstacles.x", rclcpp::ParameterValue(obs_x), obs_x_param_desc);         // defaults to the array in initializer list
     get_parameter("obstacles.x", obs_x);
+
+    rcl_interfaces::msg::ParameterDescriptor obs_y_param_desc;
+    obs_x_param_desc.name = "obstacles.y";
+    obs_x_param_desc.type = 8; // double array
+    obs_x_param_desc.description = "y coordinates of cylinder obstacles (m)";
+    declare_parameter("obstacles.y", rclcpp::ParameterValue(obs_y), obs_y_param_desc);         // defaults to the array in initializer list
+    get_parameter("obstacles.y", obs_y);
     
     RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -91,8 +102,8 @@ private:
   double theta0; // = get_parameter_or("theta0", 0.0);
   double cyl_radius; // = get_parameter_or("cyl_radius", 0.05);
   double cyl_height;
-  std::vector<double> obs_x;
-  std::vector<double> obs_y;
+  friend std::vector<double> obs_x;
+  std::vector<double> obs_y; // = {};
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -104,8 +115,10 @@ private:
   tf2::Quaternion q;
   int marker_id = 0;
   visualization_msgs::msg::MarkerArray all_cyl;
-  visualization_msgs::msg::Marker cylinder1 = create_cylinder();
   bool same_length = check_len();
+  visualization_msgs::msg::Marker cylinder1 = create_cylinder();
+  // marker_id += 1;
+  // bool same_length = check_len();
   // note that create_cylinder already adds cylinder1 to all_cyl
 
   void timer_callback()
@@ -113,7 +126,7 @@ private:
     ts.data = timestep;
     // RCLCPP_INFO_STREAM(rclcpp::get_logger("rclcpp"), "Publish count " << this->count_);
     // RCLCPP_INFO(get_logger(), "stuff: %ld", timestep);
-    timestep_pub_->publish(ts); \
+    timestep_pub_->publish(ts);
     t.header.stamp = get_clock()->now();
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
@@ -127,7 +140,15 @@ private:
     t.transform.rotation.w = q.w();
     tf2_rostf_broadcaster_->sendTransform(t);
     timestep += 1;
+    all_cyl.markers[0].header.stamp = get_clock()->now();
+    // all_cyl.markers[0].pose.position.x = obs_x[marker_id];
+    all_cyl.markers[0].pose.position.y = obs_y[marker_id];
+    all_cyl.markers[0].pose.position.z = cyl_height/2.0;
+    all_cyl.markers[0].scale.x = cyl_radius;
+    all_cyl.markers[0].scale.y = cyl_radius;
+    all_cyl.markers[0].scale.z = cyl_height;
     marker_pub_->publish(all_cyl);
+    RCLCPP_INFO(get_logger(), "x[0]: %f, %f, %f", obs_x[0], obs_x[1], obs_x[2]);
     // RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
   }
 
@@ -140,8 +161,6 @@ private:
   }
 
   void teleport(
-    // std::shared_ptr<nusim::srv::Teleport::Request> request,
-    // std::shared_ptr<nusim::srv::Teleport::Response> response)
     nusim::srv::Teleport::Request::SharedPtr request,
     nusim::srv::Teleport::Response::SharedPtr response)
   {
@@ -151,28 +170,17 @@ private:
     theta0 = request->theta;
   }
 
-  visualization_msgs::msg::Marker create_cylinder() {
-    RCLCPP_INFO(get_logger(), "x[0]: %f", obs_x[0]); 
+  visualization_msgs::msg::Marker create_cylinder() { 
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "nusim/world";
     marker.header.stamp = get_clock()->now();
     marker.id = marker_id;
     marker.type = visualization_msgs::msg::Marker::CYLINDER;
     marker.action = visualization_msgs::msg::Marker::ADD;
-    marker.pose.position.x = obs_x[marker_id];
-    /* scale is based on radius and height
-    marker.scale.pose.position.x =
-    position is based on obstacles x
-    */
-    marker.pose.position.z = cyl_height/2.0;
-    marker.scale.x = cyl_radius;
-    marker.scale.y = cyl_radius;
-    marker.scale.z = cyl_height;
     marker.color.a = 1.0;
     marker.color.r = 202/256.0;
     marker.color.g = 52/256.0;
     marker.color.b = 51/256.0;
-    marker_id += 1;
     all_cyl.markers.push_back(marker);
     return marker;
   }
@@ -182,6 +190,7 @@ private:
       return 1;
     }
     else {
+      RCLCPP_INFO(get_logger(), "obstacle x and y list have differing lengths!");
       rclcpp::shutdown();
       return 0;
     }
