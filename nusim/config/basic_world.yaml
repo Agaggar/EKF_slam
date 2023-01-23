@@ -1,6 +1,5 @@
 nusim:
   ros__parameters:
-    cyl_radius: 0.038 # m
     x0: -0.6 # m, robot
     y0: 0.8 # m, robot
     z0: 1.57 # m, robot
@@ -8,3 +7,4 @@ nusim:
     obstacles:
       x: [-0.6, 0.7, 0.5] # x-coordinates of obstacles
       y: [-0.8, -0.7, 0.9] # y-coordinates of obstacles
+      r: 0.038 # m

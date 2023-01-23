@@ -58,11 +58,11 @@ public:
     get_parameter("theta0", theta0);
     // double cyl_radius = 0.038;
     rcl_interfaces::msg::ParameterDescriptor cyl_radius_param_desc;
-    cyl_radius_param_desc.name = "cyl_radius";
+    cyl_radius_param_desc.name = "obstacles.r";
     cyl_radius_param_desc.type = 3;
     cyl_radius_param_desc.description = "radius of cylinder obstacles (m)";
-    declare_parameter("cyl_radius", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.038
-    get_parameter("cyl_radius", cyl_radius);
+    declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.038
+    get_parameter("obstacles.r", cyl_radius);
     
     // std::vector<double> obs_x = {};
     rcl_interfaces::msg::ParameterDescriptor obs_x_param_desc;
