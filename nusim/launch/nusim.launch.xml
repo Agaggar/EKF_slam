@@ -6,10 +6,6 @@
         
     <node pkg="nusim" exec="nusim"
         args="--params-file $(find-pkg-share nusim)/config/basic_world.yaml"/>
-
-    <!-- shouldn't need this node -->
-    <node pkg="tf2_ros" exec="static_transform_publisher"
-        args="--x 0.25 --frame-id nusim/world --child-frame-id red/base_footprint"/>
     
     <node pkg="rviz2" exec="rviz2" name="rviz2" 
         args="-d $(find-pkg-share nusim)/config/nusim.rviz"/>

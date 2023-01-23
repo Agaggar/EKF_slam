@@ -6,6 +6,8 @@
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "visualization_msgs/msg/marker.hpp"
 #include "nusim/srv/teleport.hpp"
 
 using namespace std::chrono_literals;
@@ -47,7 +49,21 @@ public:
     get_parameter("theta0", theta0);
 
     // need to declare all other parameters from yaml
-
+    double cyl_radius = 0.1;
+    rcl_interfaces::msg::ParameterDescriptor cyl_radius_param_desc;
+    theta0_param_desc.name = "cyl_radius";
+    theta0_param_desc.type = 3;
+    theta0_param_desc.description = "radius of cylinder obstacles (m)";
+    declare_parameter("cyl_radius", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.0
+    get_parameter("cyl_radius", cyl_radius);
+    double cyl_height = 0.25;
+    rcl_interfaces::msg::ParameterDescriptor cyl_height_param_desc;
+    theta0_param_desc.name = "cyl_height";
+    theta0_param_desc.type = 3;
+    theta0_param_desc.description = "height of cylinder obstacles (m)";
+    declare_parameter("cyl_height", rclcpp::ParameterValue(cyl_height), cyl_height_param_desc);         // defaults to 0.0
+    get_parameter("cyl_height", cyl_height);
+    
     RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
@@ -61,7 +77,7 @@ public:
     teleport_srv_ = create_service<nusim::srv::Teleport>(
       "~/teleport",
       std::bind(&Nusim::teleport, this, std::placeholders::_1, std::placeholders::_2));
-    // auto ts = std_msgs::msg::UInt64();
+    marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
   }
 
 private:
@@ -69,14 +85,21 @@ private:
   double x0 = get_parameter_or("x0", 0.0);
   double y0 = get_parameter_or("y0", 0.0);
   double theta0 = get_parameter_or("theta0", 0.0);
+  double cyl_radius = get_parameter_or("cyl_radius", 0.05);
+  double cyl_height = get_parameter_or("cyl_height", 0.25);
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
   geometry_msgs::msg::TransformStamped t;
   tf2::Quaternion q;
+  int marker_id = 0;
+  visualization_msgs::msg::MarkerArray all_cyl;
+  visualization_msgs::msg::Marker cylinder1 = create_cylinder();
+  // note that create_cylinder already adds cylinder1 to all_cyl
 
   void timer_callback()
   {
@@ -97,6 +120,7 @@ private:
     t.transform.rotation.w = q.w();
     tf2_rostf_broadcaster_->sendTransform(t);
     timestep += 1;
+    marker_pub_->publish(all_cyl);
     // RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
   }
 
@@ -118,6 +142,29 @@ private:
     x0 = request->x;
     y0 = request->y;
     theta0 = request->theta;
+  }
+
+  visualization_msgs::msg::Marker create_cylinder() {
+    visualization_msgs::msg::Marker marker;
+    marker.header.frame_id = "nusim/world";
+    marker.header.stamp = get_clock()->now();
+    marker.id = marker_id;
+    marker.type = visualization_msgs::msg::Marker::CYLINDER;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    /* scale is based on radius and height
+    marker.scale.pose.position.x =
+    position is based on obstacles x
+    */
+    marker.scale.x = cyl_radius;
+    marker.scale.y = cyl_radius;
+    marker.scale.z = cyl_height;
+    marker.color.a = 1.0;
+    marker.color.r = 8;
+    marker.color.g = 112;
+    marker.color.b = 153;
+    marker_id += 1;
+    all_cyl.markers.push_back(marker);
+    return marker;
   }
 };
 

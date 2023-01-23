@@ -15,6 +15,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_srv
   "srv/Teleport.srv"
@@ -34,6 +35,7 @@ ament_target_dependencies(
   geometry_msgs
   tf2_ros
   tf2
+  visualization_msgs
 )
 target_link_libraries(nusim "${cpp_typesupport_target}")
 ament_export_dependencies(rosidl_default_runtime)
