@@ -1,0 +1,13 @@
+/**:
+  ros__parameters:
+    cyl_radius: 0.038 # m
+    x0: -0.6 # m, robot
+    y0: 0.8 # m, robot
+    z0: 1.57 # m, robot
+    cyl1_x: -0.6
+    cyl1_y: -0.8
+    cyl2_x: 0.7
+    cyl2_y: -0.7
+    cyl3_x: 0.5
+    cyl3_y: 0.9
+    

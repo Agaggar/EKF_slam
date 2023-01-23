@@ -21,12 +21,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}_srv
   LIBRARY_NAME ${PROJECT_NAME}
 )
 
-ament_export_dependencies(rosidl_default_runtime)
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_srv "rosidl_typesupport_cpp")
 
 add_executable(nusim src/nusim.cpp)
-rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_srv "rosidl_typesupport_cpp")
-# target_link_libraries(nusim rclcpp std_msgs)
-target_link_libraries(nusim "${cpp_typesupport_target}")
+# target_link_libraries(nusim rclcpp std_msgs std_srvs rcl_interfaces geometry_msgs tf2_ros tf2)
 ament_target_dependencies(
   nusim 
   rclcpp 
@@ -36,8 +34,9 @@ ament_target_dependencies(
   geometry_msgs
   tf2_ros
   tf2
-  rosidl_default_generators
 )
+target_link_libraries(nusim "${cpp_typesupport_target}")
+ament_export_dependencies(rosidl_default_runtime)
 
 install(
   TARGETS nusim

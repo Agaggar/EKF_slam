@@ -46,6 +46,8 @@ public:
     declare_parameter("theta0", rclcpp::ParameterValue(theta0), theta0_param_desc);         // defaults to 0.0
     get_parameter("theta0", theta0);
 
+    // need to declare all other parameters from yaml
+
     RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
@@ -71,7 +73,7 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
-  rclcpp::Service<std_srvs::srv::Empty>::SharedPtr teleport_srv_;
+  rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
   geometry_msgs::msg::TransformStamped t;
   tf2::Quaternion q;
@@ -95,7 +97,7 @@ private:
     t.transform.rotation.w = q.w();
     tf2_rostf_broadcaster_->sendTransform(t);
     timestep += 1;
-    RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
+    // RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
   }
 
   void reset(
@@ -107,13 +109,15 @@ private:
   }
 
   void teleport(
-    const nusim::srv::Teleport::Request::SharedPtr request,
-    const nusim::srv::Teleport::Response::SharedPtr response)
+    // std::shared_ptr<nusim::srv::Teleport::Request> request,
+    // std::shared_ptr<nusim::srv::Teleport::Response> response)
+    nusim::srv::Teleport::Request::SharedPtr request,
+    nusim::srv::Teleport::Response::SharedPtr response)
   {
     RCLCPP_INFO(get_logger(), "Teleport service...");
-    x0 = request.x;
-    y0 = request.y;
-    theta0 = request.theta;
+    x0 = request->x;
+    y0 = request->y;
+    theta0 = request->theta;
   }
 };
 
