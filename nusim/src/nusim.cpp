@@ -17,7 +17,11 @@ class Nusim : public rclcpp::Node
 public:
   Nusim()
   : Node("nusim"),
-    timestep(0)
+    timestep(0),
+    x0(0.0),
+    y0(0.0),
+    theta0(0.0),
+    cyl_radius(0.038)
   {
     double rate = 200.0;
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
@@ -26,43 +30,34 @@ public:
     rate_param_desc.description = "simulation refresh rate (hz)";
     declare_parameter("rate", rclcpp::ParameterValue(rate), rate_param_desc);         // defaults to 200
     get_parameter("rate", rate);
-    double x0 = 0.0;
+    // double x0 = 0.0;
     rcl_interfaces::msg::ParameterDescriptor x0_param_desc;
     x0_param_desc.name = "x0";
     x0_param_desc.type = 3;         // x0 is a double
     x0_param_desc.description = "initial x0 position (m)";
     declare_parameter("x0", rclcpp::ParameterValue(x0), x0_param_desc);         // defaults to 0.0
     get_parameter("x0", x0);
-    double y0 = 0.0;
+    // double y0 = 0.0;
     rcl_interfaces::msg::ParameterDescriptor y0_param_desc;
     y0_param_desc.name = "y0";
     y0_param_desc.type = 3;         // y0 is a double
     y0_param_desc.description = "initial y0 position (m)";
     declare_parameter("y0", rclcpp::ParameterValue(y0), y0_param_desc);         // defaults to 0.0
     get_parameter("y0", y0);
-    double theta0 = 0.0;
+    // double theta0 = 0.0;
     rcl_interfaces::msg::ParameterDescriptor theta0_param_desc;
     theta0_param_desc.name = "theta0";
     theta0_param_desc.type = 3;         // theta0 is a double
     theta0_param_desc.description = "initial theta value (rad)";
     declare_parameter("theta0", rclcpp::ParameterValue(theta0), theta0_param_desc);         // defaults to 0.0
     get_parameter("theta0", theta0);
-
-    // need to declare all other parameters from yaml
-    double cyl_radius = 0.1;
+    // double cyl_radius = 0.038;
     rcl_interfaces::msg::ParameterDescriptor cyl_radius_param_desc;
-    theta0_param_desc.name = "cyl_radius";
-    theta0_param_desc.type = 3;
-    theta0_param_desc.description = "radius of cylinder obstacles (m)";
+    cyl_radius_param_desc.name = "cyl_radius";
+    cyl_radius_param_desc.type = 3;
+    cyl_radius_param_desc.description = "radius of cylinder obstacles (m)";
     declare_parameter("cyl_radius", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.0
     get_parameter("cyl_radius", cyl_radius);
-    double cyl_height = 0.25;
-    rcl_interfaces::msg::ParameterDescriptor cyl_height_param_desc;
-    theta0_param_desc.name = "cyl_height";
-    theta0_param_desc.type = 3;
-    theta0_param_desc.description = "height of cylinder obstacles (m)";
-    declare_parameter("cyl_height", rclcpp::ParameterValue(cyl_height), cyl_height_param_desc);         // defaults to 0.0
-    get_parameter("cyl_height", cyl_height);
     
     RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -82,11 +77,11 @@ public:
 
 private:
   size_t timestep = 0.0;
-  double x0 = get_parameter_or("x0", 0.0);
-  double y0 = get_parameter_or("y0", 0.0);
-  double theta0 = get_parameter_or("theta0", 0.0);
-  double cyl_radius = get_parameter_or("cyl_radius", 0.05);
-  double cyl_height = get_parameter_or("cyl_height", 0.25);
+  double x0; // = get_parameter_or("x0", 0.0);
+  double y0; // = get_parameter_or("y0", 0.0);
+  double theta0; // = get_parameter_or("theta0", 0.0);
+  double cyl_radius; // = get_parameter_or("cyl_radius", 0.05);
+  double cyl_height = 0.25;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -155,13 +150,14 @@ private:
     marker.scale.pose.position.x =
     position is based on obstacles x
     */
+    marker.pose.position.z = cyl_height/2.0;
     marker.scale.x = cyl_radius;
     marker.scale.y = cyl_radius;
     marker.scale.z = cyl_height;
     marker.color.a = 1.0;
-    marker.color.r = 8;
-    marker.color.g = 112;
-    marker.color.b = 153;
+    marker.color.r = 202/256.0;
+    marker.color.g = 52/256.0;
+    marker.color.b = 51/256.0;
     marker_id += 1;
     all_cyl.markers.push_back(marker);
     return marker;
