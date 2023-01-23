@@ -16,3 +16,6 @@ Parameters can only be changed in `config/basic_world.yaml`. The parameters incl
 - obstacles.x: a list of the x-coordinates of obstacles
 - obstacles.y: a list of the y-coordinates of obstacles
 - obstacles.r: radius of obstacles
+
+### Rviz screenshot
+https://github.com/ME495-Navigation/nuturtle-Agaggar/blob/hw1/TaskC/nusim/images/nusim1.png?raw=true
