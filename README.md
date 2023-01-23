@@ -19,8 +19,5 @@ URDF files for Nuturtle <Name Your Robot>
 * `<Command To Show Arguments of load_all.launch.py>`
   `<Output of the Above Command>`
 
-
 ros2 run nusim nusim --ros-args -p rate:=500.0 -p theta0:=3.14 -p x0:=0.0 -p y0:=1.0
-ros2 service call /nusim/teleport nusim/srv/Teleport '{x: 1.0, y: 2.0, theta: 0.0}'
-
 Worked With <List anyone you worked with here or change to nobody if nobody>

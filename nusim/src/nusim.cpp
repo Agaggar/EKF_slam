@@ -160,6 +160,10 @@ private:
   {
     RCLCPP_INFO(get_logger(), "Resetting...");
     timestep = 0;
+    int loop = 0;
+    for (loop = 0; loop < (int)obs_x.size(); loop++) {
+      all_cyl.markers.pop_back();
+    }
   }
 
   void teleport(

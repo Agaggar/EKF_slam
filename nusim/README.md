@@ -17,5 +17,9 @@ Parameters can only be changed in `config/basic_world.yaml`. The parameters incl
 - obstacles.y: a list of the y-coordinates of obstacles
 - obstacles.r: radius of obstacles
 
+### Services Sample Calls 
+- `ros2 service call /nusim/teleport nusim/srv/Teleport '{x: 1.0, y: 2.0, theta: 0.0}'`: teleports the robot to the x, y, and theta values specified
+- `ros2 service call /nusim/reset std_srvs/srv/Empty`: reset the timestep value
+
 ### Rviz screenshot
 ![Rviz_screenshot](https://github.com/ME495-Navigation/nuturtle-Agaggar/blob/hw1/TaskC/nusim/images/nusim1.png?raw=true)
