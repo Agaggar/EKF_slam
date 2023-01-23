@@ -102,7 +102,7 @@ private:
   double theta0; // = get_parameter_or("theta0", 0.0);
   double cyl_radius; // = get_parameter_or("cyl_radius", 0.05);
   double cyl_height;
-  friend std::vector<double> obs_x;
+  std::vector<double> obs_x;
   std::vector<double> obs_y; // = {};
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -115,17 +115,18 @@ private:
   tf2::Quaternion q;
   int marker_id = 0;
   visualization_msgs::msg::MarkerArray all_cyl;
-  bool same_length = check_len();
-  visualization_msgs::msg::Marker cylinder1 = create_cylinder();
+  // visualization_msgs::msg::Marker cylinder1 = create_cylinder();
   // marker_id += 1;
   // bool same_length = check_len();
   // note that create_cylinder already adds cylinder1 to all_cyl
 
   void timer_callback()
   {
+    if (timestep == 0) {
+      check_len();
+      create_all_cylinders();
+    }
     ts.data = timestep;
-    // RCLCPP_INFO_STREAM(rclcpp::get_logger("rclcpp"), "Publish count " << this->count_);
-    // RCLCPP_INFO(get_logger(), "stuff: %ld", timestep);
     timestep_pub_->publish(ts);
     t.header.stamp = get_clock()->now();
     t.header.frame_id = "nusim/world";
@@ -140,15 +141,8 @@ private:
     t.transform.rotation.w = q.w();
     tf2_rostf_broadcaster_->sendTransform(t);
     timestep += 1;
-    all_cyl.markers[0].header.stamp = get_clock()->now();
-    // all_cyl.markers[0].pose.position.x = obs_x[marker_id];
-    all_cyl.markers[0].pose.position.y = obs_y[marker_id];
-    all_cyl.markers[0].pose.position.z = cyl_height/2.0;
-    all_cyl.markers[0].scale.x = cyl_radius;
-    all_cyl.markers[0].scale.y = cyl_radius;
-    all_cyl.markers[0].scale.z = cyl_height;
+    update_all_cylinders();
     marker_pub_->publish(all_cyl);
-    RCLCPP_INFO(get_logger(), "x[0]: %f, %f, %f", obs_x[0], obs_x[1], obs_x[2]);
     // RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
   }
 
@@ -185,14 +179,34 @@ private:
     return marker;
   }
 
-  bool check_len() {
+  void create_all_cylinders() {
+    int loop = 0;
+    for (loop = 0; loop < (int)obs_x.size(); loop++) {
+      visualization_msgs::msg::Marker cylinder = create_cylinder();
+      marker_id += 1;
+    }
+  }
+
+  void update_all_cylinders() {
+    int loop = 0;
+    for (loop = 0; loop < (int)obs_x.size(); loop++) {
+      all_cyl.markers[loop].header.stamp = get_clock()->now();
+      all_cyl.markers[loop].pose.position.x = obs_x[loop];
+      all_cyl.markers[loop].pose.position.y = obs_y[loop];
+      all_cyl.markers[loop].pose.position.z = cyl_height/2.0;
+      all_cyl.markers[loop].scale.x = cyl_radius;
+      all_cyl.markers[loop].scale.y = cyl_radius;
+      all_cyl.markers[loop].scale.z = cyl_height;
+    }
+  }
+
+  void check_len() {
     if (obs_x.size() == obs_y.size()) {
-      return 1;
+      ;
     }
     else {
       RCLCPP_INFO(get_logger(), "obstacle x and y list have differing lengths!");
       rclcpp::shutdown();
-      return 0;
     }
   }
 };
