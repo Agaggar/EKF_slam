@@ -21,14 +21,17 @@ public:
     x0(0.0),
     y0(0.0),
     theta0(0.0),
-    cyl_radius(0.038)
+    cyl_radius(0.038),
+    cyl_height(0.25),
+    obs_x({0.2, 0.0, 0.0})
+    // obs_x({-0.6, 0.7, 0.5})
   {
     double rate = 200.0;
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
     rate_param_desc.name = "rate";
     rate_param_desc.type = 3;         // rate is a double
     rate_param_desc.description = "simulation refresh rate (hz)";
-    declare_parameter("rate", rclcpp::ParameterValue(rate), rate_param_desc);         // defaults to 200
+    declare_parameter("rate", rclcpp::ParameterValue(rate), rate_param_desc);         // defaults to 200.0
     get_parameter("rate", rate);
     // double x0 = 0.0;
     rcl_interfaces::msg::ParameterDescriptor x0_param_desc;
@@ -56,8 +59,14 @@ public:
     cyl_radius_param_desc.name = "cyl_radius";
     cyl_radius_param_desc.type = 3;
     cyl_radius_param_desc.description = "radius of cylinder obstacles (m)";
-    declare_parameter("cyl_radius", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.0
+    declare_parameter("cyl_radius", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);         // defaults to 0.038
     get_parameter("cyl_radius", cyl_radius);
+    rcl_interfaces::msg::ParameterDescriptor obs_x_param_desc;
+    obs_x_param_desc.name = "obstacles.x";
+    obs_x_param_desc.type = 8; // double array
+    obs_x_param_desc.description = "x coordinates of cylinder obstacles (m)";
+    declare_parameter("obstacles.x", rclcpp::ParameterValue(obs_x), obs_x_param_desc);         // defaults to the array in initializer list
+    get_parameter("obstacles.x", obs_x);
     
     RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -76,12 +85,14 @@ public:
   }
 
 private:
-  size_t timestep = 0.0;
+  size_t timestep;
   double x0; // = get_parameter_or("x0", 0.0);
   double y0; // = get_parameter_or("y0", 0.0);
   double theta0; // = get_parameter_or("theta0", 0.0);
   double cyl_radius; // = get_parameter_or("cyl_radius", 0.05);
-  double cyl_height = 0.25;
+  double cyl_height;
+  std::vector<double> obs_x;
+  std::vector<double> obs_y;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -94,6 +105,7 @@ private:
   int marker_id = 0;
   visualization_msgs::msg::MarkerArray all_cyl;
   visualization_msgs::msg::Marker cylinder1 = create_cylinder();
+  bool same_length = check_len();
   // note that create_cylinder already adds cylinder1 to all_cyl
 
   void timer_callback()
@@ -140,12 +152,14 @@ private:
   }
 
   visualization_msgs::msg::Marker create_cylinder() {
+    RCLCPP_INFO(get_logger(), "x[0]: %f", obs_x[0]); 
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "nusim/world";
     marker.header.stamp = get_clock()->now();
     marker.id = marker_id;
     marker.type = visualization_msgs::msg::Marker::CYLINDER;
     marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.pose.position.x = obs_x[marker_id];
     /* scale is based on radius and height
     marker.scale.pose.position.x =
     position is based on obstacles x
@@ -161,6 +175,16 @@ private:
     marker_id += 1;
     all_cyl.markers.push_back(marker);
     return marker;
+  }
+
+  bool check_len() {
+    if (obs_x.size() == obs_y.size()) {
+      return 1;
+    }
+    else {
+      rclcpp::shutdown();
+      return 0;
+    }
   }
 };
 
