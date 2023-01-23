@@ -20,6 +20,7 @@ public:
     timestep(0),
     x0(0.0),
     y0(0.0),
+    z0(0.0),
     theta0(0.0),
     cyl_radius(0.038),
     cyl_height(0.25),
@@ -49,6 +50,12 @@ public:
     y0_param_desc.description = "initial y0 position (m)";
     declare_parameter("y0", rclcpp::ParameterValue(y0), y0_param_desc);         // defaults to 0.0
     get_parameter("y0", y0);
+    rcl_interfaces::msg::ParameterDescriptor z0_param_desc;
+    y0_param_desc.name = "z0";
+    y0_param_desc.type = 3;         // y0 is a double
+    y0_param_desc.description = "initial z0 position (m)";
+    declare_parameter("z0", rclcpp::ParameterValue(z0), z0_param_desc);         // defaults to 0.0
+    get_parameter("z0", z0);
     // double theta0 = 0.0;
     rcl_interfaces::msg::ParameterDescriptor theta0_param_desc;
     theta0_param_desc.name = "theta0";
@@ -99,6 +106,7 @@ private:
   size_t timestep;
   double x0; // = get_parameter_or("x0", 0.0);
   double y0; // = get_parameter_or("y0", 0.0);
+  double z0;
   double theta0; // = get_parameter_or("theta0", 0.0);
   double cyl_radius; // = get_parameter_or("cyl_radius", 0.05);
   double cyl_height;
@@ -133,7 +141,7 @@ private:
     t.child_frame_id = "red/base_footprint";
     t.transform.translation.x = x0;
     t.transform.translation.y = y0;
-    t.transform.translation.z = 0.0;
+    t.transform.translation.z = z0;
     q.setRPY(0, 0, theta0);
     t.transform.rotation.x = q.x();
     t.transform.rotation.y = q.y();

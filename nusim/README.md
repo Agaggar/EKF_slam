@@ -11,7 +11,7 @@ Parameters can only be changed in `config/basic_world.yaml`. The parameters incl
 
 - x0: initial x coordinate of the robot, m
 - y0: initial y coordinate of the robot, m
-- z0: initial z coordinate of the robot, m (this should not be modified, since gravity is not simulated)
+- z0: initial z coordinate of the robot, m
 - theta0: initial angle heading of the robot, rad
 - obstacles.x: a list of the x-coordinates of obstacles
 - obstacles.y: a list of the y-coordinates of obstacles
