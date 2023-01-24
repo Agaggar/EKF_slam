@@ -1,3 +1,25 @@
+/// \file
+/// \brief spin nusim node to simulat one robot and several obstacles
+///
+/// PARAMETERS:
+///     rate (double): frequency of timer callback (hertz)
+///     x0 (double): initial x position of the robot (m)
+///     y0 (double): initial y position of the robot (m)
+///     z0 (double): initial z position of the robot (m)
+///     theta0 (double): initial heading of the robot (rad)
+///     obstacles.x (std::vector<double>): x coordinates of obstacles (m)
+///     obstacles.y (std::vector<double>): y coordinates of obstacles (m)
+/// PUBLISHES:
+///     obstacles (visualization_msgs::msg::MarkerArray): publish cylinder markers to rviz
+///     timestep (int): publish timestep of simulation
+/// SUBSCRIBES:
+///     none
+/// SERVERS:
+///     reset (std_srvs::srv::Empty): reset timestep to 0
+///     teleport (nusim::srv::Teleport): move the robot to a specified x, y, theta position
+/// CLIENTS:
+///     none
+
 #include <chrono>
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
@@ -26,8 +48,6 @@ public:
     cyl_height(0.25),
     obs_x(std::vector<double> {0.0}),
     obs_y(std::vector<double> {0.0})
-    // obs_y({0.2, 0.0, 0.0})
-    // obs_x({-0.6, 0.7, 0.5})
   {
     double rate = 200.0;
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
@@ -123,11 +143,8 @@ private:
   tf2::Quaternion q;
   int marker_id = 0;
   visualization_msgs::msg::MarkerArray all_cyl;
-  // visualization_msgs::msg::Marker cylinder1 = create_cylinder();
-  // marker_id += 1;
-  // bool same_length = check_len();
-  // note that create_cylinder already adds cylinder1 to all_cyl
 
+  /// \brief Timer callback
   void timer_callback()
   {
     if (timestep == 0) {
@@ -154,6 +171,10 @@ private:
     // RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
   }
 
+  /// \brief Reset timestep by listening to reset service
+  ///
+  /// \param request - Empty type
+  /// \param response - Empty type
   void reset(
     const std_srvs::srv::Empty::Request::SharedPtr request,
     const std_srvs::srv::Empty::Response::SharedPtr response)
@@ -166,6 +187,10 @@ private:
     }
   }
 
+  /// \brief Teleport robot based on teleport service
+  ///
+  /// \param request - nusim::srv::Teleport type, contains x, y, and theta
+  /// \param response - none
   void teleport(
     nusim::srv::Teleport::Request::SharedPtr request,
     nusim::srv::Teleport::Response::SharedPtr response)
@@ -176,6 +201,9 @@ private:
     theta0 = request->theta;
   }
 
+  /// \brief Create a single cylinder and add it to a MarkerArray
+  ///
+  /// \returns marker (cylinder)  
   visualization_msgs::msg::Marker create_cylinder() { 
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "nusim/world";
@@ -191,6 +219,7 @@ private:
     return marker;
   }
 
+  /// \brief Create all cylinders based on yaml
   void create_all_cylinders() {
     int loop = 0;
     for (loop = 0; loop < (int)obs_x.size(); loop++) {
@@ -199,6 +228,7 @@ private:
     }
   }
 
+  /// \brief Update positions, timesteps, etc when publishing
   void update_all_cylinders() {
     int loop = 0;
     for (loop = 0; loop < (int)obs_x.size(); loop++) {
@@ -212,6 +242,7 @@ private:
     }
   }
 
+  /// \brief Make sure the length of x and y coordinates are the same
   void check_len() {
     if (obs_x.size() == obs_y.size()) {
       ;
