@@ -134,7 +134,7 @@ namespace turtlelib {
         is >> v.x >> v.y;
         std::cin.ignore(50, '\n');
         return is;
-    }
+    };
 
     std::ostream & operator<<(std::ostream & os, const Twist2D & t) {
         return os << "[" << t.angular << " " << t.linearx << " " << t.lineary << "]";
@@ -148,6 +148,21 @@ namespace turtlelib {
         is >> t.angular >> t.linearx >> t.lineary;
         std::cin.ignore(50, '\n');
         return is;
+    };
+
+    double normalize_angle(double rad) {
+        double normalized = (rad) / PI;
+        if (normalized > -1.0 && normalized <= 1.0) {
+            return rad;
+        }
+        else {
+            if (normalized < 0.0) {
+                return normalized - ((int) normalized) * PI;
+            }
+            else {
+                return normalized - ((int) normalized) * PI;
+            }
+        }
     };
 }
 
