@@ -2,40 +2,37 @@
 #include <iostream>
 
 namespace turtlelib {
-        Vector2D Vector2D::normalize() {
-            Vector2D normalize = *this;
-            double mag = sqrt(pow(x,2) + pow(y, 2));
-            normalize.x = normalize.x/mag;
-            normalize.y = normalize.y/mag;
-            return normalize;
+    Vector2D Vector2D::normalize() {
+        Vector2D normalize = *this;
+        double mag = sqrt(pow(x,2) + pow(y, 2));
+        normalize.x = normalize.x/mag;
+        normalize.y = normalize.y/mag;
+        return normalize;
     };
 
     Transform2D::Transform2D() {};
 
     Transform2D::Transform2D(const Vector2D& trans) {
-            r31 = trans.x;
-            r32 = trans.y;
+        r31 = trans.x;
+        r32 = trans.y;
     };
 
-    Transform2D::Transform2D(double radians):
-        rot(radians)
-        {
+    Transform2D::Transform2D(double radians) {
         r11 = cos(radians);
         r12 = -1*sin(radians);
         r21 = sin(radians);
         r22 = cos(radians);
+        rot = radians;
     };
 
-    Transform2D::Transform2D(const Vector2D& trans, double radians):
-        rot(radians)
-        {
+    Transform2D::Transform2D(const Vector2D& trans, double radians) {
         r11 = cos(radians);
         r12 = -1*sin(radians);
         r21 = sin(radians);
         r22 = cos(radians);
         r13 = trans.x;
         r23 = trans.y;
-        // rot = radians;
+        rot = radians;
     };
 
     Vector2D Transform2D::operator()(const Vector2D& v) const {
@@ -93,6 +90,7 @@ namespace turtlelib {
         temp.r31 = -1*r13;
         temp.r32 = r21;
         temp.r33 = r22;
+        temp.rot = rot;
         return temp;
     };
 
