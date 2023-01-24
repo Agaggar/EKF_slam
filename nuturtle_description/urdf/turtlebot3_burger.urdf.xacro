@@ -3,7 +3,7 @@
      for the purposes of a class assignment. The rights of the original source code
      can be found on the github of robotis' turtlebot3 repo. The changes made to the
      original file are largely aesthetic changes made for educational purposes. -->
-<robot name="turtlebot3_burger" xmlns:xacro="http://ros.org/wiki/xacro">
+<robot name="vroomba" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:property name="yaml" value="$(find nuturtle_description)/config/diff_params.yaml" />
   <xacro:property name="props" value="${xacro.load_yaml(yaml)}" />
   <xacro:property name="ros_param" value="${props['/**']}" />

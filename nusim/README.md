@@ -7,7 +7,7 @@ This package is designed to launch a single robot with a set number of obstacles
 `ros2 launch nusim nusim.launch.xml` will launch nusim, rviz, and a robot and joint state publisher. Thhis launch file calls `load_one.launch.py` from nuturtle_description.
 
 ### Parameters
-Parameters can only be changed in `config/basic_world.yaml`. The parameters include:
+Parameters can be changed in `config/basic_world.yaml`. The parameters include:
 
 - x0: initial x coordinate of the robot, m
 - y0: initial y coordinate of the robot, m
@@ -16,6 +16,9 @@ Parameters can only be changed in `config/basic_world.yaml`. The parameters incl
 - obstacles.x: a list of the x-coordinates of obstacles
 - obstacles.y: a list of the y-coordinates of obstacles
 - obstacles.r: radius of obstacles
+
+Any node specific parameter that is not part of the obstacles namespace can also be passed in through the command line individually when running the nusim node:
+`ros2 run nusim nusim --ros-args -p rate:=500.0 -p theta0:=3.14 -p x0:=0.0 -p y0:=1.0`
 
 ### Services Sample Calls 
 - `ros2 service call /nusim/teleport nusim/srv/Teleport '{x: 1.0, y: 2.0, theta: 0.0}'`: teleports the robot to the x, y, and theta values specified
