@@ -84,6 +84,16 @@ namespace turtlelib
         /// \brief normalize vector
         /// \return void (this vector is modified)
         Vector2D normalize();
+
+        /// \brief addition operator between vectors (assigns to lhs vector)
+        /// \param rhs - the vector to add
+        /// \return a *reference* to the newly transformed operator
+        Vector2D & operator+=(Vector2D rhs);
+
+        /// \brief addition operator between vectors (returns new vector)
+        /// \param rhs - the vector to add
+        /// \return a new vector
+        Vector2D & operator+(Vector2D & rhs);
     };
 
     /// \brief A 2-D Twist
@@ -98,6 +108,11 @@ namespace turtlelib
         /// \brief the y component of the linear component 
         double lineary = 0.0; // y component
     };
+
+    /// \brief normalize an angle to within a certain range
+    /// \param rad - angle to normalize in radians
+    /// \returns normalized angle in radians
+    double normalize_angle(double rad);
 
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
     /// \param os - stream to output to

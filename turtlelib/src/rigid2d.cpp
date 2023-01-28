@@ -151,18 +151,28 @@ namespace turtlelib {
     };
 
     double normalize_angle(double rad) {
-        double normalized = (rad) / PI;
-        if (normalized > -1.0 && normalized <= 1.0) {
+        if (rad > -PI && rad <= PI) {
             return rad;
         }
         else {
+            int rotations = (int) ((rad) / PI / 2.0);
+            double normalized = rad - (rotations * 2*PI);
+            if (normalized > -PI && normalized <= PI) {
+                return normalized;
+            }
             if (normalized < 0.0) {
-                return normalized - ((int) normalized) * PI;
+                return normalized + 2*PI;
             }
             else {
-                return normalized - ((int) normalized) * PI;
+                return normalized - 2*PI;
             }
         }
+    };
+
+    Vector2D & Vector2D::operator+=(Vector2D rhs) {
+        this->x = this->x + rhs.x;
+        this->y = this->y + rhs.y;
+        return *this;
     };
 }
 
