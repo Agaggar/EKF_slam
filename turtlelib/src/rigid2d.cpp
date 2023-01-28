@@ -1,5 +1,6 @@
 #include "turtlelib/rigid2d.hpp"
 #include <iostream>
+#include <cmath>
 
 namespace turtlelib {
     Vector2D Vector2D::normalize() {
@@ -174,6 +175,45 @@ namespace turtlelib {
         this->y = this->y + rhs.y;
         return *this;
     };
+
+    Vector2D & Vector2D::operator+(Vector2D rhs) {
+        Vector2D myvec = *this;
+        return myvec += rhs;
+    };
+
+    Vector2D & Vector2D::operator-=(Vector2D rhs) {
+        this->x = this->x - rhs.x;
+        this->y = this->y - rhs.y;
+        return *this;
+    };
+
+    Vector2D & Vector2D::operator-(Vector2D rhs) {
+        Vector2D myvec = *this;
+        return myvec -= rhs;
+    };
+
+    Vector2D & Vector2D::operator*=(double rhs) {
+        this->x = this->x * rhs;
+        this->y = this->y * rhs;
+        return *this;
+    };
+
+    Vector2D & Vector2D::operator*(double rhs) {
+        Vector2D myvec = *this;
+        return myvec *= rhs;
+    };
+
+    double dot(Vector2D vec1, Vector2D vec2) {
+        return vec1.x*vec2.x + vec1.y*vec2.y;
+    }
+
+    double magnitude(Vector2D vec) {
+        return sqrt(pow(vec.x,2) + pow(vec.y, 2));
+    };
+
+    double angle(Vector2D vec1, Vector2D vec2) {
+        return acos(dot(vec1, vec2)/magnitude(vec1)/magnitude(vec2));
+    }
 }
 
 // int main(void) {
@@ -183,10 +223,10 @@ namespace turtlelib {
 //     std::cout << myvec << std::endl;
 //     std::cin.clear();
 
-//     turtlelib::Twist2D mytwist;
-//     std::cout << "enter the twist you'd like to save: ";
-//     std::cin >> mytwist;
-//     std::cout << mytwist << std::endl;
+//     // turtlelib::Twist2D mytwist;
+//     // std::cout << "enter the twist you'd like to save: ";
+//     // std::cin >> mytwist;
+//     // std::cout << mytwist << std::endl;
     
 //     // turtlelib::Transform2D::Transform2D();
 //     return 0;

@@ -82,7 +82,7 @@ namespace turtlelib
         double y = 0.0;
 
         /// \brief normalize vector
-        /// \return void (this vector is modified)
+        /// \return this vector
         Vector2D normalize();
 
         /// \brief addition operator between vectors (assigns to lhs vector)
@@ -93,8 +93,50 @@ namespace turtlelib
         /// \brief addition operator between vectors (returns new vector)
         /// \param rhs - the vector to add
         /// \return a new vector
-        Vector2D & operator+(Vector2D & rhs);
+        Vector2D & operator+(Vector2D rhs);
+
+        /// \brief subtraction operator between vectors (assigns to lhs vector)
+        /// \param rhs - the vector to subtract
+        /// \return a *reference* to the newly transformed operator
+        Vector2D & operator-=(Vector2D rhs);
+
+        /// \brief subtraction operator between vectors (returns new vector)
+        /// \param rhs - the vector to subtract
+        /// \return a new vector
+        Vector2D & operator-(Vector2D rhs);
+
+        /// \brief multiplication operator between vector and scalar (assigns to lhs vector)
+        /// \param rhs - the scalar to scale by
+        /// \return a *reference* to the newly transformed operator
+        Vector2D & operator*=(double rhs);
+
+        /// \brief multiplication operator between vector and scalar (assigns to lhs vector)
+        /// \param rhs - the vector to be scaled
+        /// \return a *reference* to the newly transformed operator
+        // Vector2D & operator*=(Vector2D rhs);
+
+        /// \brief multiplication operator between vector and scalar (returns new vector)
+        /// \param rhs - the scalar to scale by
+        /// \return a new vector
+        Vector2D & operator*(double rhs);
     };
+
+    /// \brief compute dot product of two vectors
+    /// \param vec1 - first vector
+    /// \param vec2 - second vector
+    /// \return scalar result of dot product
+    double dot(Vector2D vec1, Vector2D vec2);
+
+    /// \brief compute magnitude of vector
+    /// \param vec - vector who's magnitude is being computed
+    /// \return double with magnitude
+    double magnitude(Vector2D vec);
+
+    /// \brief compute angle btwn two vectors
+    /// \param vec1 - first vector
+    /// \param vec2 - second vector
+    /// \return double with magnitude of angle in radians
+    double angle(Vector2D vec1, Vector2D vec2);
 
     /// \brief A 2-D Twist
     struct Twist2D

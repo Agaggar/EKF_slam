@@ -151,3 +151,28 @@ TEST_CASE("normalizing angle -5pi/2", "[double]") {
     double angle = turtlelib::PI*-2.5;
     REQUIRE( turtlelib::almost_equal(turtlelib::normalize_angle(angle), -0.5*turtlelib::PI));
 }
+
+TEST_CASE("vector operators", "[vector2d]") {
+    turtlelib::Vector2D myvec = turtlelib::Vector2D{1, -1};
+    myvec += turtlelib::Vector2D{1, -1};
+    REQUIRE( turtlelib::almost_equal(myvec.x, 2));
+    REQUIRE( turtlelib::almost_equal(myvec.y, -2));
+    myvec -= turtlelib::Vector2D{1, -1};
+    REQUIRE( turtlelib::almost_equal(myvec.x, 1));
+    REQUIRE( turtlelib::almost_equal(myvec.y, -1));
+    turtlelib::Vector2D vec_test = myvec + turtlelib::Vector2D{1, -1};
+    REQUIRE( turtlelib::almost_equal(vec_test.x, 2));
+    REQUIRE( turtlelib::almost_equal(vec_test.y, -2));
+    vec_test = myvec - turtlelib::Vector2D{1, -1};
+    REQUIRE( turtlelib::almost_equal(vec_test.x, 0));
+    REQUIRE( turtlelib::almost_equal(vec_test.y, 0));
+    myvec*=2.5;
+    REQUIRE( turtlelib::almost_equal(myvec.x, 2.5));
+    REQUIRE( turtlelib::almost_equal(myvec.y, -2.5));
+    vec_test = myvec*0.4;
+    REQUIRE( turtlelib::almost_equal(vec_test.x,1));
+    REQUIRE( turtlelib::almost_equal(vec_test.y, -1));
+    REQUIRE( turtlelib::almost_equal(turtlelib::magnitude(vec_test), sqrt(2)));
+    REQUIRE( turtlelib::almost_equal(turtlelib::dot(vec_test, myvec), 5));
+    REQUIRE( turtlelib::almost_equal(turtlelib::angle(vec_test, turtlelib::Vector2D{1, 1}), turtlelib::PI/2.0));
+}
