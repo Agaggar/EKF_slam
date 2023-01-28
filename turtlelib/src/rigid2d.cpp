@@ -36,6 +36,16 @@ namespace turtlelib {
         rot = radians;
     };
 
+    Transform2D::Transform2D(const Twist2D& twist) {
+        r11 = cos(twist.angular);
+        r12 = -1*sin(twist.angular);
+        r21 = sin(twist.angular);
+        r22 = cos(twist.angular);
+        r13 = twist.linearx;
+        r23 = twist.lineary;
+        rot = twist.angular;
+    };
+
     Vector2D Transform2D::operator()(const Vector2D& v) const {
         Vector2D tran_vec;
         tran_vec.x = r11 * v.x + r12 * v.y + r13;
@@ -119,7 +129,8 @@ namespace turtlelib {
     };
 
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs) {
-        return lhs*=rhs;
+        Transform2D new_trans = lhs;
+        return new_trans*=rhs;
     };
  
 
@@ -222,7 +233,25 @@ namespace turtlelib {
 
     double angle(Vector2D vec1, Vector2D vec2) {
         return acos(dot(vec1, vec2)/magnitude(vec1)/magnitude(vec2));
-    }
+    };
+
+    Transform2D Transform2D::integrate_twist(Twist2D twist0) {
+        Transform2D Tbbprime;
+        if (turtlelib::almost_equal(twist0.angular, 0.0, 1e-6)) {
+            Transform2D Tbbprime = Transform2D{Vector2D{twist0.linearx, twist0.lineary}};
+        }
+        else {
+            double dtheta = twist0.angular;
+            double ys = -twist0.linearx/twist0.angular;
+            double xs = twist0.lineary/twist0.angular;
+            Transform2D Tsb = Transform2D{Vector2D{xs, ys}};
+            Transform2D Tssprime = Transform2D{dtheta};
+            Transform2D Tbbprime = (Tsb.inv() * Tssprime) * Tsb;
+        }
+        Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
+        Twist2D dq = Transform2D{twist0.angular}.adj().conv_diff_frame(dqb);
+        return Transform2D{dq};
+    };
 }
 
 // int main(void) {

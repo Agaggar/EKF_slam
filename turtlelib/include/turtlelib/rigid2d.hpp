@@ -249,6 +249,10 @@ namespace turtlelib
         /// \param radians - the rotation, in radians
         Transform2D(const Vector2D& trans, double radians);
 
+        /// \brief Create a transformation with a Twist2D
+        /// \param twist - twist
+        Transform2D(const Twist2D& twist);
+
         /// \brief apply a transformation to a Vector2D
         /// \param v - the vector to transform
         /// \return a vector in the new coordinate system
@@ -286,6 +290,11 @@ namespace turtlelib
         /// for a description
         friend std::ostream & operator<<(std::ostream & os, const Transform2D & tf);
 
+        /// \brief integrate a twist for one unit time 
+        /// \param twist0 - twist to integrate 
+        /// \return the transformation result from integrating by one time-unit 
+        Transform2D integrate_twist(Twist2D twist0);
+
     };
 
 
@@ -309,8 +318,6 @@ namespace turtlelib
     /// \return the composition of the two transforms
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
-
-
 
 }
 
