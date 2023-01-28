@@ -203,6 +203,15 @@ namespace turtlelib {
         return myvec *= rhs;
     };
 
+    Vector2D operator*(double lhs, Vector2D rhs) {
+        Vector2D myvec = rhs;
+        return myvec*=lhs;
+    };
+
+    Vector2D operator*=(double lhs, Vector2D rhs) {
+        return rhs*=lhs;
+    };
+
     double dot(Vector2D vec1, Vector2D vec2) {
         return vec1.x*vec2.x + vec1.y*vec2.y;
     }

@@ -110,11 +110,6 @@ namespace turtlelib
         /// \return a *reference* to the newly transformed operator
         Vector2D & operator*=(double rhs);
 
-        /// \brief multiplication operator between vector and scalar (assigns to lhs vector)
-        /// \param rhs - the vector to be scaled
-        /// \return a *reference* to the newly transformed operator
-        // Vector2D & operator*=(Vector2D rhs);
-
         /// \brief multiplication operator between vector and scalar (returns new vector)
         /// \param rhs - the scalar to scale by
         /// \return a new vector
@@ -137,6 +132,18 @@ namespace turtlelib
     /// \param vec2 - second vector
     /// \return double with magnitude of angle in radians
     double angle(Vector2D vec1, Vector2D vec2);
+
+    /// \brief multiplication operator between vector and scalar (assigns to rhs vector)
+    /// \param lhs - the scalar value to scale by
+    /// \param rhs - the vector to be scaled
+    /// \return a *reference* to the newly transformed operator
+    Vector2D operator*=(double lhs, Vector2D rhs);
+
+    /// \brief multiplication operator between vector and scalar
+    /// \param lhs - the scalar value to scale by
+    /// \param rhs - the vector to be scaled
+    /// \return a new vector to the newly transformed operator
+    Vector2D operator*(double lhs, Vector2D rhs);
 
     /// \brief A 2-D Twist
     struct Twist2D
@@ -271,6 +278,7 @@ namespace turtlelib
         Transform2D adj() const;
 
         /// \brief convert twist to a different reference frame
+        /// \param new_frame - twist to convert
         /// \return the same twist, represented in the new frame
         Twist2D conv_diff_frame(const Twist2D& new_frame) const;
 
@@ -301,6 +309,7 @@ namespace turtlelib
     /// \return the composition of the two transforms
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
+
 
 
 }

@@ -174,5 +174,5 @@ TEST_CASE("vector operators", "[vector2d]") {
     REQUIRE( turtlelib::almost_equal(vec_test.y, -1));
     REQUIRE( turtlelib::almost_equal(turtlelib::magnitude(vec_test), sqrt(2)));
     REQUIRE( turtlelib::almost_equal(turtlelib::dot(vec_test, myvec), 5));
-    REQUIRE( turtlelib::almost_equal(turtlelib::angle(vec_test, turtlelib::Vector2D{1, 1}), turtlelib::PI/2.0));
+    REQUIRE( turtlelib::almost_equal(turtlelib::angle(vec_test, 3*turtlelib::Vector2D{1, 1}), turtlelib::PI/2.0));
 }
