@@ -176,3 +176,26 @@ TEST_CASE("vector operators", "[vector2d]") {
     REQUIRE( turtlelib::almost_equal(turtlelib::dot(vec_test, myvec), 5));
     REQUIRE( turtlelib::almost_equal(turtlelib::angle(vec_test, 3*turtlelib::Vector2D{1, 1}), turtlelib::PI/2.0));
 }
+
+TEST_CASE("inverse kinematics pure translation", "[twist2d]") {
+    turtlelib::Transform2D base_frame = turtlelib::Transform2D(turtlelib::Vector2D{1.0, -1.0}, turtlelib::PI/2);
+    turtlelib::Twist2D twist0 = turtlelib::Twist2D{0.0, 1.0, -1.0};
+    turtlelib::Transform2D transform_test = base_frame.integrate_twist(twist0);
+    REQUIRE( turtlelib::almost_equal(transform_test.translation().x, 1.0));
+    REQUIRE( turtlelib::almost_equal(transform_test.translation().y, -1.0));
+    REQUIRE( turtlelib::almost_equal(transform_test.rotation(), 0.0));
+
+    twist0 = turtlelib::Twist2D{turtlelib::PI/4.0, 0.0, 0.0};
+    transform_test = base_frame.integrate_twist(twist0);
+    REQUIRE( turtlelib::almost_equal(transform_test.translation().x, 0.0));
+    REQUIRE( turtlelib::almost_equal(transform_test.translation().y, 0.0));
+    REQUIRE( turtlelib::almost_equal(transform_test.rotation(), turtlelib::PI/4.0));
+
+    twist0 = turtlelib::Twist2D{turtlelib::PI/4.0, 1.0, -1.0};
+    transform_test = base_frame.integrate_twist(twist0);
+    // #TODO: check to make sure both rotation and translation works too
+    // REQUIRE( turtlelib::almost_equal(transform_test.translation().x, sqrt(2.0)/2.0));
+    // REQUIRE( turtlelib::almost_equal(transform_test.translation().y, -1.0*sqrt(0.5)));
+    // REQUIRE( turtlelib::almost_equal(transform_test.rotation(), turtlelib::PI/4.0));
+
+}

@@ -238,19 +238,20 @@ namespace turtlelib {
     Transform2D Transform2D::integrate_twist(Twist2D twist0) {
         Transform2D Tbbprime;
         if (turtlelib::almost_equal(twist0.angular, 0.0, 1e-6)) {
-            Transform2D Tbbprime = Transform2D{Vector2D{twist0.linearx, twist0.lineary}};
+            Tbbprime = Transform2D{Vector2D{twist0.linearx, twist0.lineary}, 0.0};
         }
         else {
             double dtheta = twist0.angular;
-            double ys = -twist0.linearx/twist0.angular;
+            double ys = -1.0*twist0.linearx/twist0.angular;
             double xs = twist0.lineary/twist0.angular;
-            Transform2D Tsb = Transform2D{Vector2D{xs, ys}};
+            Transform2D Tsb = Transform2D{Vector2D{xs, ys}, dtheta};
             Transform2D Tssprime = Transform2D{dtheta};
-            Transform2D Tbbprime = (Tsb.inv() * Tssprime) * Tsb;
+            Tbbprime = (Tsb.inv() * Tssprime) * Tsb;
         }
         Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
         Twist2D dq = Transform2D{twist0.angular}.adj().conv_diff_frame(dqb);
-        return Transform2D{dq};
+        // return Transform2D{dq};
+        return Tbbprime;
     };
 }
 
