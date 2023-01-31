@@ -193,9 +193,10 @@ TEST_CASE("inverse kinematics pure translation", "[twist2d]") {
 
     twist0 = turtlelib::Twist2D{turtlelib::PI/4.0, 1.0, -1.0};
     transform_test = base_frame.integrate_twist(twist0);
-    // #TODO: check to make sure both rotation and translation works too
-    // REQUIRE( turtlelib::almost_equal(transform_test.translation().x, sqrt(2.0)/2.0));
-    // REQUIRE( turtlelib::almost_equal(transform_test.translation().y, -1.0*sqrt(0.5)));
-    // REQUIRE( turtlelib::almost_equal(transform_test.rotation(), turtlelib::PI/4.0));
+    // REQUIRE(std::to_string(transform_test.translation().y) == std::to_string(-4/turtlelib::PI));
+    // REQUIRE( std::to_string(transform_test.translation().x) == std::to_string((4*sqrt(2.0)-4)/turtlelib::PI));
+    REQUIRE( turtlelib::almost_equal(transform_test.translation().x, (4*sqrt(2.0)-4)/turtlelib::PI));
+    REQUIRE( turtlelib::almost_equal(transform_test.translation().y, -4/turtlelib::PI));
+    REQUIRE( turtlelib::almost_equal(transform_test.rotation(), turtlelib::PI/4.0));
 
 }
