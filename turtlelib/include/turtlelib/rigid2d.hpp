@@ -218,19 +218,6 @@ namespace turtlelib
             double r33 = 1.0;
             double rot = 0.0;
 
-        /*
-        + note that order huggeeelllyyy matters --> keep order of initialization in constructor the same as order in initializer list
-        + what is the "this" syntax
-
-        example:
-            Transform2D():
-                r11(1.0);
-                r22(1.0);
-                r33(1.0);
-            {
-                // logic goes here
-            }
-        */
     public:
         /// \brief Create an identity transformation
         Transform2D();
