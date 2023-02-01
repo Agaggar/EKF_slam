@@ -1,6 +1,8 @@
 #include "turtlelib/rigid2d.hpp"
+#include "turtlelib/diff_drive.hpp"
 #include <iostream>
-#include <cmath>
+// #include <cmath>
+#include <vector>
 
 namespace turtlelib {
     Vector2D Vector2D::normalize() {
@@ -252,6 +254,62 @@ namespace turtlelib {
         Twist2D dq = Transform2D{twist0.angular}.adj().conv_diff_frame(dqb);
         // return Transform2D{dq};
         return Tbbprime;
+    };
+
+    DiffDrive::DiffDrive() {};
+
+    DiffDrive::DiffDrive(const double qx, const double qy, const double qtheta) {
+        q = std::vector<double> {qx, qy, qtheta};
+    };
+
+    DiffDrive::DiffDrive(const double phi_r, const double phi_l, const double qx, const double qy, const double qtheta) {
+        phi.at(0) = phi_r;
+        phi.at(1) = phi_l;
+        q = std::vector<double> {qx, qy, qtheta};
+    };
+
+    DiffDrive::DiffDrive(const std::vector<double> qnew) {
+        q = qnew;
+    }
+
+    DiffDrive::DiffDrive(const std::vector<double> phinew, const std::vector<double> qnew) {
+        phi = phinew;
+        q = qnew;
+    };
+
+    void DiffDrive::setWheelRadius(double wheel_radius) {
+        this->wheel_radius = wheel_radius;
+    };
+
+    void DiffDrive::setWheelTrack(double wheel_track) {
+        this->wheel_track = wheel_track;
+    };
+
+    void DiffDrive::fkinematics(const std::vector<double> phinew) {
+        double phi_rprime = phinew.at(0) - phi.at(0);
+        double phi_lprime = phinew.at(1) - phi.at(1);
+        std::vector<std::vector<double>> hstar {{-wheel_radius/2.0/wheel_track, wheel_radius/2.0/wheel_track}, 
+                                                {wheel_radius/2.0*cos(q.at(2)), wheel_radius/2.0*cos(q.at(2))}, 
+                                                {wheel_radius/2.0*sin(q.at(2)), wheel_radius/2.0*sin(q.at(2))}};
+        Twist2D body_twist = Twist2D{hstar.at(0).at(0) * phi_lprime + hstar.at(0).at(1) * phi_rprime,
+                                     hstar.at(1).at(0) * phi_lprime + hstar.at(1).at(1) * phi_rprime,
+                                     hstar.at(2).at(0) * phi_lprime + hstar.at(2).at(1) * phi_rprime};
+        q.at(0) += body_twist.linearx;
+        q.at(1) += body_twist.lineary;
+        q.at(2) += body_twist.angular;
+    };
+
+    std::vector<double> DiffDrive::ikinematics(Twist2D twist0) {
+        std::vector<std::vector<double>> H {{-1.0*wheel_track/wheel_radius, 1.0, 0.0},
+                                            {wheel_track/wheel_radius, 1.0, 0.0}};
+        std::vector<double> wheel_vel {H.at(0).at(0) * twist0.angular + H.at(0).at(1) * twist0.linearx + H.at(0).at(2) * twist0.lineary,
+                                       H.at(1).at(0) * twist0.angular + H.at(1).at(1) * twist0.linearx + H.at(1).at(2) * twist0.lineary};
+        if (!almost_equal(wheel_vel.at(1), 0.0)) {
+            throw std::logic_error("wheels slipped! since y velocity is not 0");
+        }
+        else {
+            return wheel_vel;
+        }
     };
 }
 

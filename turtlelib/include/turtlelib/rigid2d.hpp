@@ -4,7 +4,7 @@
 /// \brief Two-dimensional rigid body transformations.
 
 
-#include<iosfwd> // contains forward definitions for iostream objects
+#include <iosfwd> // contains forward definitions for iostream objects
 #include <cstdlib> // standard library, use for absolute value
 #include <math.h> // standard math library, used for sin and cos in transformations
 #include <iostream> // standard input/output stream library

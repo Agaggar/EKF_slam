@@ -1,7 +1,10 @@
 #include "turtlelib/rigid2d.hpp"
+#include "turtlelib/diff_drive.hpp"
 #include <iostream>
 
 int main(void) {
+    turtlelib::DiffDrive dd;
+
     turtlelib::Transform2D T_ab, T_bc;
     std::cout << "Enter transform T_{a,b}): ";
     std::cin >> T_ab;

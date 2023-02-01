@@ -1,13 +1,14 @@
-#ifndef RIGID2D_INCLUDE_GUARD_HPP
-#define RIGID2D_INCLUDE_GUARD_HPP
+#ifndef DIFFDRIVE_INCLUDE_GUARD_HPP
+#define DIFFDRIVE_INCLUDE_GUARD_HPP
 /// \file
 /// \brief Model kinematics of a differential drive robot given wheel track and radius
 
-#include "turtlelib/rigid2d.hpp"
+#include "rigid2d.hpp"
 #include <iosfwd> // contains forward definitions for iostream objects
 #include <cstdlib> // standard library, use for absolute value
 #include <math.h> // standard math library, used for sin and cos in transformations
 #include <iostream> // standard input/output stream library
+#include <vector> // standard vector library
 
 namespace turtlelib
 {
@@ -15,38 +16,53 @@ namespace turtlelib
     class DiffDrive
     {
         private:
-            double phi_r = 0.0; // right wheel position
-            double phi_l = 0.0; // left wheel position
-            double qx = 0.0; // robot configuration, x
-            double qy = 0.0; // robot configuration, y
-            double qtheta = 0.0; // robot configuration, theta
+            std::vector<double> phi = {0.0, 0.0}; // right, left wheel position
+            std::vector<double> q {0.0, 0.0, 0.0}; // robot configuration, x, y, theta respectively
+            double wheel_radius = 0.033; // wheel radius, m
+            double wheel_track = 0.16; // wheel track, m
         
-        public:
-            /// \brief Create a diff drive robot with default values
-            DiffDrive();
+    public:
+        /// \brief Create a diff drive robot with default values
+        DiffDrive();
 
-            /// \brief Create a diff drive robot given a configuration
-            /// \param qx - robot config, x
-            /// \param qy - robot config, y
-            /// \param qtheta - robot config, theta
-            DiffDrive(const double qx, const double qy, const double qtheta);
+        /// \brief Create a diff drive robot given a configuration. Default wheel phi values.
+        /// \param qx - robot config, x
+        /// \param qy - robot config, y
+        /// \param qtheta - robot config, theta
+        DiffDrive(const double qx, const double qy, const double qtheta);
 
-            /// \brief Create a diff drive robot given a configuration and wheel positions
-            /// \param phi_r - right wheel position
-            /// \param phi_l - left wheel position
-            /// \param qx - robot config, x
-            /// \param qy - robot config, y
-            /// \param qtheta - robot config, theta
-            DiffDrive(const double phi_r, const double phi_l, const double qx, const double qy, const double qtheta);
+        /// \brief Create a diff drive robot given a configuration. Default wheel phi values.
+        /// \param qnew - robot config, x, y, theta
+        explicit DiffDrive(const std::vector<double> qnew);
 
-            /// \brief Compute forward kinematics
-            /// \param phi_rprime - new right wheel position
-            /// \param phi_lprime - new left wheel position
-            void fkinematics(double phi_rprime, double phi_lprime);
+        /// \brief Create a diff drive robot given a configuration and wheel positions
+        /// \param phi_r - right wheel position
+        /// \param phi_l - left wheel position
+        /// \param qx - robot config, x
+        /// \param qy - robot config, y
+        /// \param qtheta - robot config, theta
+        DiffDrive(const double phi_r, const double phi_l, const double qx, const double qy, const double qtheta);
 
-            /// \brief Compute inverse kinematics
-            /// \param twist0 - desired body twist
-            Vector2D ikinematics(turtlelib::Twist2D twist0);
+        /// \brief Create a diff drive robot given a configuration and wheel positions
+        /// \param phinew - right, left wheel position
+        /// \param qnew - robot config, x, y, theta
+        DiffDrive(const std::vector<double> phinew, const std::vector<double> qnew);
+
+        /// \brief set wheel radius of robot 
+        /// \param wheel_radius - wheel_radius to set 
+        void setWheelRadius(double wheel_radius);
+
+        /// \brief set wheel track of robot 
+        /// \param wheel_track - wheel_track to set 
+        void setWheelTrack(double wheel_track);
+
+        /// \brief Compute forward kinematics
+        /// \param phi_new - new wheel positions
+        void fkinematics(const std::vector<double> phi_new);
+
+        /// \brief Compute inverse kinematics
+        /// \param twist0 - desired body twist
+        std::vector<double> ikinematics(Twist2D twist0);
 
     };
 }
