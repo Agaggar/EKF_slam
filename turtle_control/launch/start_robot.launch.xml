@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="turtle_control" exec="turtle_control"
+        args="--ros-args --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+</launch>
