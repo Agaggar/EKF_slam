@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>turtle_control</name>
+  <version>0.0.4</version>
+  <description>control for nuturtle bot</description>
+  <maintainer email="agaggar@u.northwestern.edu">ayushgaggar</maintainer>
+  <license>APLv2</license>
+
+  <exec_depend>ros2launch</exec_depend>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
