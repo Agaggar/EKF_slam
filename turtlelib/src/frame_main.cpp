@@ -3,7 +3,6 @@
 #include <iostream>
 
 int main(void) {
-    turtlelib::DiffDrive dd;
 
     turtlelib::Transform2D T_ab, T_bc;
     std::cout << "Enter transform T_{a,b}): ";

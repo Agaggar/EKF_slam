@@ -291,12 +291,12 @@ namespace turtlelib {
         std::vector<std::vector<double>> hstar {{-wheel_radius/2.0/wheel_track, wheel_radius/2.0/wheel_track}, 
                                                 {wheel_radius/2.0*cos(q.at(2)), wheel_radius/2.0*cos(q.at(2))}, 
                                                 {wheel_radius/2.0*sin(q.at(2)), wheel_radius/2.0*sin(q.at(2))}};
-        Twist2D body_twist = Twist2D{hstar.at(0).at(0) * phi_lprime + hstar.at(0).at(1) * phi_rprime,
-                                     hstar.at(1).at(0) * phi_lprime + hstar.at(1).at(1) * phi_rprime,
-                                     hstar.at(2).at(0) * phi_lprime + hstar.at(2).at(1) * phi_rprime};
-        q.at(0) += body_twist.linearx;
-        q.at(1) += body_twist.lineary;
-        q.at(2) += body_twist.angular;
+        Twist2D dq = Twist2D{hstar.at(0).at(0) * phi_lprime + hstar.at(0).at(1) * phi_rprime,
+                             hstar.at(1).at(0) * phi_lprime + hstar.at(1).at(1) * phi_rprime,
+                             hstar.at(2).at(0) * phi_lprime + hstar.at(2).at(1) * phi_rprime};
+        q.at(0) += dq.linearx;
+        q.at(1) += dq.lineary;
+        q.at(2) += dq.angular;
     };
 
     std::vector<double> DiffDrive::ikinematics(Twist2D twist0) {
