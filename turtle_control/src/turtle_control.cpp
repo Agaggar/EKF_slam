@@ -25,6 +25,7 @@
 #include "turtle_control/msg/wheel_commands.hpp"
 #include "turtle_control/msg/sensor_data.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
+#include "turtlelib/diff_drive.hpp"
 
 using namespace std::chrono_literals;
 
@@ -70,6 +71,7 @@ public:
     wheel_cmd_pub = create_publisher<turtle_control::msg::WheelCommands>("~/wheel_cmd", 10);
     js_pub = create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
     cmd_vel_sub = create_subscription<geometry_msgs::msg::Twist>("~/cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
+    sensor_data_sub = create_subscription<turtle_control::msg::SensorData>("~/sensor_data", 10, std::bind(&TurtleControl::sd_callback, this, std::placeholders::_1));
     timer =
       create_wall_timer(
       std::chrono::milliseconds(int(1.0 / 200.0 * 1000)),
@@ -83,6 +85,7 @@ private:
   rclcpp::Publisher<turtle_control::msg::WheelCommands>::SharedPtr wheel_cmd_pub;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub;
+  rclcpp::Subscription<turtle_control::msg::SensorData>::SharedPtr sensor_data_sub;
   rclcpp::TimerBase::SharedPtr timer;
   // more stuff
   // inc timer callback
@@ -96,6 +99,11 @@ private:
   /// \brief cmd_vel subscription callback
   void cmd_vel_callback(const geometry_msgs::msg::Twist &twist) {
     ; // do stuff
+  }
+
+  /// \brief sensor_data subscription callback
+  void sd_callback(const turtle_control::msg::SensorData) {
+    ; //do stuff
   }
 };
 

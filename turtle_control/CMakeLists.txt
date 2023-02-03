@@ -15,7 +15,14 @@ find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
+find_package(turtlelib REQUIRED)
 get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
+# add_library(turtlelib ${DIR_ABOVE}/nuturtle-Agaggar/turtlelib/src/rigid2d.cpp)
+# target_include_directories(turtlelib PUBLIC include/)
+# # enable C++ 17
+# target_compile_features(turtlelib PUBLIC cxx_std_17) 
+# # warnings are your friend!
+# target_compile_options(turtlelib PUBLIC -Wall -Wextra -Wpedantic)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_msgs
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
@@ -42,7 +49,7 @@ ament_target_dependencies(
   sensor_msgs
 )
 
-target_link_libraries(turtle_control "${cpp_typesupport_target}")
+target_link_libraries(turtle_control "${cpp_typesupport_target}" turtlelib::turtlelib)
 ament_export_dependencies(rosidl_default_runtime)
 
 install(
@@ -53,7 +60,7 @@ install(
 install(
   DIRECTORY
   launch 
-  DESTINATION share/${PROJECT_NAME}/
+  DESTINATION share/${PROJECT_NAME}
 )
 
 ament_package()
