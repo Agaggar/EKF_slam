@@ -2,11 +2,18 @@
 /// \brief control turtlebot
 ///
 /// PARAMETERS:
-///     var_name (type): description
+///     wheel_radius (double): loaded from diff_params.yaml; wheel radius in m
+///     track_width (double): loaded from diff_params.yaml; dist btwn wheels in m
+///     motor_cmd_max (int): loaded from diff_params.yaml; max motor command input
+///     motor_cmd_per_rad_sec (double): loaded from diff_params.yaml; motor command tick in rad/s
+///     encoder_ticks_per_rad (double): loaded from diff_params.yaml; number of encoder ticks per radian
+///     collision_radius (double): loaded from diff_params.yaml; collision radius in m
 /// PUBLISHES:
-///     TODO
+///     wheel_cmd (nuturtlebot_msgs/WheelCommands): make turtlebot3 follow specified twist
+///     joint_states (sensor_msgs/JointState): provide angle (rad) and vel (rad/sec)
 /// SUBSCRIBES:
-///     TODO
+///     cmd_vel (geometry_msgs/Twist)
+///     sensor_data (nuturtlebot_msgs/SensorData)
 /// SERVERS:
 ///     TODO
 /// CLIENTS:
@@ -17,6 +24,10 @@
 #include "std_srvs/srv/empty.hpp"
 #include "rcl_interfaces/msg/parameter_descriptor.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "turtle_control/msg/wheel_commands.hpp"
+#include "turtle_control/msg/sensor_data.hpp"
+// #include "turtle_control/msg/WheelCommands.msg"
+// #include "turtle_control/msg/SensorData.msg"
 
 using namespace std::chrono_literals;
 
@@ -27,7 +38,7 @@ public:
   : Node("turtle_control"),
     wheel_radius(0.033),
     track_width(0.16), 
-    motor_cmd_max(365),
+    motor_cmd_max(265),
     motor_cmd_per_rad_sec(0.024), 
     encoder_ticks_per_rad(651.8986),
     collision_radius(0.11)

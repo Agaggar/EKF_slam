@@ -12,6 +12,18 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(rcl_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
+
+rosidl_generate_interfaces(${PROJECT_NAME}_msgs
+  "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
+  "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
+  DEPENDENCIES builtin_interfaces
+  LIBRARY_NAME ${PROJECT_NAME}
+)
+
+rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_msgs "rosidl_typesupport_cpp")
 
 add_executable(turtle_control src/turtle_control.cpp)
 # target_include_directories(turtle_control PUBLIC
@@ -25,7 +37,11 @@ ament_target_dependencies(
   std_srvs 
   rcl_interfaces
   geometry_msgs
+  builtin_interfaces
 )
+
+target_link_libraries(turtle_control "${cpp_typesupport_target}")
+ament_export_dependencies(rosidl_default_runtime)
 
 install(
   TARGETS turtle_control
