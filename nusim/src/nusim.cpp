@@ -243,13 +243,13 @@ private:
   {
     int loop = 0;
     for (loop = 0; loop < (int)obs_x.size(); loop++) {
-      all_cyl.markers[loop].header.stamp = get_clock()->now();
-      all_cyl.markers[loop].pose.position.x = obs_x[loop];
-      all_cyl.markers[loop].pose.position.y = obs_y[loop];
-      all_cyl.markers[loop].pose.position.z = cyl_height / 2.0;
-      all_cyl.markers[loop].scale.x = cyl_radius;
-      all_cyl.markers[loop].scale.y = cyl_radius;
-      all_cyl.markers[loop].scale.z = cyl_height;
+      all_cyl.markers.at(loop).header.stamp = get_clock()->now();
+      all_cyl.markers.at(loop).pose.position.x = obs_x.at(loop);
+      all_cyl.markers.at(loop).pose.position.y = obs_y.at(loop);
+      all_cyl.markers.at(loop).pose.position.z = cyl_height / 2.0;
+      all_cyl.markers.at(loop).scale.x = cyl_radius;
+      all_cyl.markers.at(loop).scale.y = cyl_radius;
+      all_cyl.markers.at(loop).scale.z = cyl_height;
     }
   }
 
