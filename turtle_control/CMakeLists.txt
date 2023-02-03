@@ -14,6 +14,7 @@ find_package(rcl_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
+find_package(sensor_msgs REQUIRED)
 get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_msgs
@@ -38,6 +39,7 @@ ament_target_dependencies(
   rcl_interfaces
   geometry_msgs
   builtin_interfaces
+  sensor_msgs
 )
 
 target_link_libraries(turtle_control "${cpp_typesupport_target}")
