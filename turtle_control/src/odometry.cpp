@@ -53,6 +53,7 @@ public:
         }
     }
     tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    odom_pub = create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
     js_sub = create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&Odometry::js_callback, this, std::placeholders::_1));
     initial_pose_srv = create_service<turtle_control::srv::Teleport>(
       "/initial_pose",
@@ -66,9 +67,11 @@ public:
 private:
   std::string body_id, odom_id, wheel_left, wheel_right;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
   rclcpp::Service<turtle_control::srv::Teleport>::SharedPtr initial_pose_srv;
   rclcpp::TimerBase::SharedPtr timer;
+  turtlelib::DiffDrive nubot;
 
   std::vector<double> config{0.0, 0.0, 0.0}; // x, y, theta
 
@@ -80,7 +83,7 @@ private:
   }
 
   void js_callback(const sensor_msgs::msg::JointState js) {
-    ; // do stuff
+    nubot.fkinematics(js.position);
   }
 
   void ip_srv_callback(turtle_control::srv::Teleport::Request::SharedPtr request,
@@ -89,6 +92,14 @@ private:
     config.at(0) = request->x;
     config.at(1) = request->y;
     config.at(2) = request->theta;
+  }
+
+  nav_msgs::msg::Odometry compute_odom() {
+    nav_msgs::msg::Odometry odom_msg = nav_msgs::msg::Odometry();
+    odom_msg.header.stamp = get_clock()->now();
+    odom_msg.header.frame_id = odom_id;
+    odom_msg.child_frame_id = body_id;
+    odom_msg.pose.pose.position.x = 
   }
 
 };
