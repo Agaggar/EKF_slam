@@ -19,6 +19,7 @@
 /// CLIENTS:
 ///     TODO
 
+#include <cstdint>
 #include "rclcpp/rclcpp.hpp"
 #include "rcl_interfaces/msg/parameter_descriptor.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -26,6 +27,7 @@
 #include "turtle_control/msg/sensor_data.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "turtlelib/diff_drive.hpp"
+#include "std_msgs/msg/int32.hpp"
 
 using namespace std::chrono_literals;
 
@@ -39,7 +41,8 @@ public:
     motor_cmd_max(265),
     motor_cmd_per_rad_sec(0.024), 
     encoder_ticks_per_rad(651.8986),
-    collision_radius(0.11)
+    collision_radius(0.11),
+    nubot()
   {
     // rcl_interfaces::msg::ParameterDescriptor wheel_radius_param_desc;
     // wheel_radius_param_desc.name = "wheel_radius";
@@ -68,6 +71,9 @@ public:
       }
     }
 
+    nubot.setWheelRadius(wheel_radius);
+    nubot.setWheelTrack(track_width);
+
     wheel_cmd_pub = create_publisher<turtle_control::msg::WheelCommands>("~/wheel_cmd", 10);
     js_pub = create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
     cmd_vel_sub = create_subscription<geometry_msgs::msg::Twist>("~/cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
@@ -82,28 +88,55 @@ private:
   double wheel_radius, track_width;
   int motor_cmd_max;
   double motor_cmd_per_rad_sec, encoder_ticks_per_rad, collision_radius;
+  turtlelib::DiffDrive nubot;
   rclcpp::Publisher<turtle_control::msg::WheelCommands>::SharedPtr wheel_cmd_pub;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub;
   rclcpp::Subscription<turtle_control::msg::SensorData>::SharedPtr sensor_data_sub;
   rclcpp::TimerBase::SharedPtr timer;
-  // more stuff
-  // inc timer callback
+  turtlelib::Twist2D qdot{0.0, 0.0, 0.0};
+  sensor_msgs::msg::JointState js_msg;
+  rclcpp::Time current_time{get_clock()->now()};
 
   /// \brief Timer callback
   void timer_callback()
   {
-     RCLCPP_INFO(get_logger(), "node works");
+    current_time = get_clock()->now();
+    RCLCPP_INFO(get_logger(), "node works");
+    wheel_cmd_pub->publish(conv_vel_to_tick(nubot.ikinematics(qdot)));
   }
 
-  /// \brief cmd_vel subscription callback
+  /// \brief cmd_vel subscription callback assigns 2D velocity values to Twist2D qdot
   void cmd_vel_callback(const geometry_msgs::msg::Twist &twist) {
-    ; // do stuff
+    qdot.angular = twist.angular.z;
+    qdot.linearx = twist.linear.x;
+    qdot.lineary = twist.linear.y;
   }
 
   /// \brief sensor_data subscription callback
-  void sd_callback(const turtle_control::msg::SensorData) {
-    ; //do stuff
+  sensor_msgs::msg::JointState sd_callback(const turtle_control::msg::SensorData sd) {
+    js_msg.header.stamp = get_clock()->now();
+    js_msg.name = std::vector<std::string>{"left wheel, right wheel"};
+    js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
+    js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
+    return js_msg;
+  }
+
+  turtle_control::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
+    auto cmd = turtle_control::msg::WheelCommands();
+    cmd.left_velocity = int32_t (wheel_vel.at(0)/motor_cmd_per_rad_sec);
+    cmd.right_velocity = int32_t (wheel_vel.at(0)/motor_cmd_per_rad_sec);
+    return cmd;
+  }
+
+  std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
+    return std::vector<double> {left_encoder/encoder_ticks_per_rad, right_encoder*left_encoder/encoder_ticks_per_rad};
+  }
+
+  std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {
+    return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec - current_time.stamp.sec + js_msg.header.stamp.nanosec - current_time.stamp.nanosec), 
+                                (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec - current_time.stamp.sec + js_msg.header.stamp.nanosec - current_time.stamp.nanosec)
+    };
   }
 };
 
