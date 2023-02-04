@@ -33,6 +33,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}_msgs
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
   "${DIR_ABOVE}/nuturtle-Agaggar/nusim:srv/Teleport.srv"
+  "srv/Circle.srv"
+  "srv/Reverse.srv"
+  "srv/Stop.srv"
   DEPENDENCIES builtin_interfaces
   LIBRARY_NAME ${PROJECT_NAME}
 )
@@ -74,8 +77,20 @@ ament_target_dependencies(
 )
 target_link_libraries(odometry "${cpp_typesupport_target}" turtlelib::turtlelib)
 
+add_executable(circle src/circle.cpp)
+
+ament_target_dependencies(
+  circle
+  rclcpp
+  std_msgs
+  std_srvs
+  rcl_interfaces
+  geometry_msgs
+)
+target_link_libraries(circle "${cpp_typesupport_target}")
+
 install(
-  TARGETS turtle_control odometry
+  TARGETS turtle_control odometry circle
   DESTINATION lib/${PROJECT_NAME}
 )
 

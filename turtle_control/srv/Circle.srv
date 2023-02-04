@@ -1,0 +1,5 @@
+# velocity: angular velocity, + for counter-clockwise, - for clockwise
+# radius: radius of circle
+float64 velocity
+float64 radius
+---
