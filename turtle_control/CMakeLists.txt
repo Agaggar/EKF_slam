@@ -18,6 +18,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(tf2 REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
 get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
@@ -68,9 +69,10 @@ ament_target_dependencies(
   tf2_ros
   tf2
   sensor_msgs
+  tf2_geometry_msgs
   nav_msgs
 )
-target_link_libraries(odometry "${cpp_typesupport_target}")
+target_link_libraries(odometry "${cpp_typesupport_target}" turtlelib::turtlelib)
 
 install(
   TARGETS turtle_control odometry
