@@ -319,4 +319,8 @@ namespace turtlelib {
     std::vector<double> DiffDrive::getCurrentConfig() {
         return this->q;
     };
+
+    void DiffDrive::setCurrentConfig(std::vector<double> qnew) {
+        this->q = qnew;
+    };
 }

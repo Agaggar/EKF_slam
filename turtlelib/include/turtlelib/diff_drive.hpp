@@ -70,6 +70,10 @@ namespace turtlelib
         /// \brief Get current configuration
         std::vector<double> getCurrentConfig();
 
+        /// \brief Set current configuration
+        /// \param qnew - new configuration: x, y, theta 
+        void setCurrentConfig(std::vector<double> qnew)
+
     };
 }
 
