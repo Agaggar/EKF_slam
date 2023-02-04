@@ -72,7 +72,7 @@ namespace turtlelib
 
         /// \brief Set current configuration
         /// \param qnew - new configuration: x, y, theta 
-        void setCurrentConfig(std::vector<double> qnew)
+        void setCurrentConfig(std::vector<double> qnew);
 
     };
 }
