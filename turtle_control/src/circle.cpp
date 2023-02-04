@@ -69,9 +69,6 @@ private:
   /// \brief Timer callback
   void timer_callback()
   {
-    if (state == State::STOP) {
-        ;
-    }
     if (state == State::GO) {
         circle_twist.linear.x = radius;
         circle_twist.angular.z = velocity;
@@ -81,6 +78,7 @@ private:
         zero_twist.linear.x = 0.0;
         zero_twist.angular.z = 0.0;
         cmd_vel_pub->publish(zero_twist);
+        state = State::STOP;
     }
     // current_time = get_clock()->now();
     // RCLCPP_INFO(get_logger(), "node works");
