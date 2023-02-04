@@ -74,8 +74,8 @@ public:
     nubot.setWheelRadius(wheel_radius);
     nubot.setWheelTrack(track_width);
 
-    wheel_cmd_pub = create_publisher<turtle_control::msg::WheelCommands>("~/wheel_cmd", 10);
-    js_pub = create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
+    wheel_cmd_pub = create_publisher<turtle_control::msg::WheelCommands>("/wheel_cmd", 10);
+    js_pub = create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
     cmd_vel_sub = create_subscription<geometry_msgs::msg::Twist>("~/cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
     sensor_data_sub = create_subscription<turtle_control::msg::SensorData>("~/sensor_data", 10, std::bind(&TurtleControl::sd_callback, this, std::placeholders::_1));
     timer =
@@ -104,6 +104,7 @@ private:
     current_time = get_clock()->now();
     RCLCPP_INFO(get_logger(), "node works");
     wheel_cmd_pub->publish(conv_vel_to_tick(nubot.ikinematics(qdot)));
+    js_pub->publish(js_msg);
   }
 
   /// \brief cmd_vel subscription callback assigns 2D velocity values to Twist2D qdot
