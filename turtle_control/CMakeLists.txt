@@ -16,6 +16,10 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(nav_msgs REQUIRED)
+find_package(turtlelib REQUIRED)
 get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 # add_library(turtlelib ${DIR_ABOVE}/nuturtle-Agaggar/turtlelib/src/rigid2d.cpp)
 # target_include_directories(turtlelib PUBLIC include/)
@@ -27,6 +31,7 @@ get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 rosidl_generate_interfaces(${PROJECT_NAME}_msgs
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
+  "${DIR_ABOVE}/nuturtle-Agaggar/nusim:srv/Teleport.srv"
   DEPENDENCIES builtin_interfaces
   LIBRARY_NAME ${PROJECT_NAME}
 )
@@ -52,8 +57,23 @@ ament_target_dependencies(
 target_link_libraries(turtle_control "${cpp_typesupport_target}" turtlelib::turtlelib)
 ament_export_dependencies(rosidl_default_runtime)
 
+add_executable(odometry src/odometry.cpp)
+
+ament_target_dependencies(
+  odometry
+  rclcpp 
+  std_msgs 
+  std_srvs 
+  rcl_interfaces
+  tf2_ros
+  tf2
+  sensor_msgs
+  nav_msgs
+)
+target_link_libraries(odometry "${cpp_typesupport_target}")
+
 install(
-  TARGETS turtle_control
+  TARGETS turtle_control odometry
   DESTINATION lib/${PROJECT_NAME}
 )
 
