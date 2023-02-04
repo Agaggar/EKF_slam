@@ -15,9 +15,9 @@
 ///     cmd_vel (geometry_msgs/Twist)
 ///     sensor_data (nuturtlebot_msgs/SensorData)
 /// SERVERS:
-///     TODO
+///     none
 /// CLIENTS:
-///     TODO
+///     none
 
 #include <cstdint>
 #include "rclcpp/rclcpp.hpp"
