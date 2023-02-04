@@ -134,8 +134,8 @@ private:
   }
 
   std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {
-    return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec - current_time.stamp.sec + js_msg.header.stamp.nanosec - current_time.stamp.nanosec), 
-                                (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec - current_time.stamp.sec + js_msg.header.stamp.nanosec - current_time.stamp.nanosec)
+    return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec - current_time.nanoseconds()/1e-9), 
+                                (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec - current_time.nanoseconds()/1e-9)
     };
   }
 };
