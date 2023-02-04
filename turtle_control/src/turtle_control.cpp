@@ -102,7 +102,7 @@ private:
   void timer_callback()
   {
     current_time = get_clock()->now();
-    RCLCPP_INFO(get_logger(), "node works");
+    // RCLCPP_INFO(get_logger(), "node works");
     wheel_cmd_pub->publish(conv_vel_to_tick(nubot.ikinematics(qdot)));
     js_pub->publish(js_msg);
   }
