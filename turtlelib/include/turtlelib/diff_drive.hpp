@@ -60,14 +60,22 @@ namespace turtlelib
         /// \param phi_new - new wheel positions
         void fkinematics(const std::vector<double> phi_new);
 
+        /// \brief convert control (velocities) to a body twist
+        /// \param phiprime - wheel velocities (left, right) 
+        /// \return body twist
+        Twist2D velToTwist(const std::vector<double> phiprime);
+
         /// \brief Compute inverse kinematics
         /// \param twist0 - desired body twist
+        /// \return wheel velocities (u, i.e. scontrol)
         std::vector<double> ikinematics(Twist2D twist0);
 
         /// \brief Get current wheel positions
+        /// \return wheel positions
         std::vector<double> getWheelPos();
 
         /// \brief Get current configuration
+        /// \return current configuration (x, y, theta)
         std::vector<double> getCurrentConfig();
 
         /// \brief Set current configuration
