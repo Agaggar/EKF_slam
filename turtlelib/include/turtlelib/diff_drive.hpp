@@ -64,6 +64,12 @@ namespace turtlelib
         /// \param twist0 - desired body twist
         std::vector<double> ikinematics(Twist2D twist0);
 
+        /// \brief Get current wheel positions
+        std::vector<double> getWheelPos();
+
+        /// \brief Get current configuration
+        std::vector<double> getCurrentConfig();
+
     };
 }
 
