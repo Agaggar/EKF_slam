@@ -33,9 +33,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}_msgs
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
   "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
   "${DIR_ABOVE}/nuturtle-Agaggar/nusim:srv/Teleport.srv"
-  "srv/Circle.srv"
-  "srv/Reverse.srv"
-  "srv/Stop.srv"
+  "${CMAKE_CURRENT_SOURCE_DIR}:srv/Circle.srv"
+  "${CMAKE_CURRENT_SOURCE_DIR}:srv/Reverse.srv"
+  "${CMAKE_CURRENT_SOURCE_DIR}:srv/Stop.srv"
   DEPENDENCIES builtin_interfaces
   LIBRARY_NAME ${PROJECT_NAME}
 )

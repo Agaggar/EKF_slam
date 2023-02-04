@@ -19,6 +19,9 @@
 #include "std_srvs/srv/empty.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
+#include "turtle_control/srv/circle.hpp"
+#include "turtle_control/srv/reverse.hpp"
+#include "turtle_control/srv/stop.hpp"
 
 using namespace std::chrono_literals;
 
@@ -36,6 +39,15 @@ public:
     declare_parameter("frequency", rclcpp::ParameterValue(frequency));
     get_parameter("frequency", frequency);
     cmd_vel_pub = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
+    circle_srv = create_service<turtle_control::srv::Circle>(
+      "~/circle",
+      std::bind(&Circle::circle_callback, this, std::placeholders::_1, std::placeholders::_2));
+    reverse_srv = create_service<turtle_control::srv::Reverse>(
+      "~/reverse",
+      std::bind(&Circle::reverse_callback, this, std::placeholders::_1, std::placeholders::_2));
+    stop_srv = create_service<turtle_control::srv::Stop>(
+      "~/stop",
+      std::bind(&Circle::stop_callback, this, std::placeholders::_1, std::placeholders::_2));
     timer =
       create_wall_timer(
       std::chrono::milliseconds(int(1.0 / frequency * 1000)),
@@ -46,18 +58,28 @@ private:
   double frequency;
   State state;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub;
+  rclcpp::Service<turtle_control::srv::Circle>::SharedPtr circle_srv;
+  rclcpp::Service<turtle_control::srv::Reverse>::SharedPtr reverse_srv;
+  rclcpp::Service<turtle_control::srv::Stop>::SharedPtr stop_srv;
   rclcpp::TimerBase::SharedPtr timer;
-  geometry_msgs::msg::Twist zero_twist{geometry_msgs::msg::Vector3{0.0, 0.0, 0.0}, geometry_msgs::msg::Vector3{0.0, 0.0, 0.0}};
+  geometry_msgs::msg::Twist zero_twist;
   geometry_msgs::msg::Twist circle_twist;
   double radius, velocity;
 
   /// \brief Timer callback
   void timer_callback()
   {
+    if (state == State::STOP) {
+        ;
+    }
     if (state == State::GO) {
-        // pub to cmd_vel
+        circle_twist.linear.x = radius;
+        circle_twist.angular.z = velocity;
+        cmd_vel_pub->publish(circle_twist);
     }
     if (state == State::END) {
+        zero_twist.linear.x = 0.0;
+        zero_twist.angular.z = 0.0;
         cmd_vel_pub->publish(zero_twist);
     }
     // current_time = get_clock()->now();
@@ -65,28 +87,50 @@ private:
   }
 
   /// \brief move the robot in a circle
-  /// \param request - custom srv type, with double parameters radius and velocity
+  /// \param request - Circle.srv type, with double parameters radius and velocity
   /// \param response - Empty type
-  void reverse(
-    const std_srvs::srv::Empty::Request::SharedPtr request,
-    const std_srvs::srv::Empty::Response::SharedPtr response)
+  void circle_callback(
+    turtle_control::srv::Circle::Request::SharedPtr request,
+    const turtle_control::srv::Circle::Response::SharedPtr response)
   {
+    velocity = request->velocity;
+    radius = request->radius;
+    if (state != State::GO) {
+        state = State::GO;
+    }
   }
 
   /// \brief Reverse direction of robot
   /// \param request - Empty type
   /// \param response - Empty type
-  void reverse(
-    const std_srvs::srv::Empty::Request::SharedPtr request,
-    const std_srvs::srv::Empty::Response::SharedPtr response)
+  void reverse_callback(
+    const turtle_control::srv::Reverse::Request::SharedPtr request,
+    const turtle_control::srv::Reverse::Response::SharedPtr response)
   {
+    if (state != State::GO) {
+        RCLCPP_INFO(get_logger(), "robot is not moving!");
+    }
+    else {
+        RCLCPP_INFO(get_logger(), "reversing...");
+    }
+    velocity = -1*velocity;
+  }
+
+  /// \brief Stop robot
+  /// \param request - Empty type
+  /// \param response - Empty type
+  void stop_callback(
+    const turtle_control::srv::Stop::Request::SharedPtr request,
+    const turtle_control::srv::Stop::Response::SharedPtr response)
+  {
+    state = State::END;
   }
 };
   
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<Odometry>());
+  rclcpp::spin(std::make_shared<Circle>());
   rclcpp::shutdown();
   return 0;
 }
