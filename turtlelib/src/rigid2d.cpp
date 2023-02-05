@@ -6,11 +6,14 @@
 
 namespace turtlelib {
     Vector2D Vector2D::normalize() {
-        Vector2D normalize = *this;
+        // Vector2D normalize = *this;
         double mag = sqrt(pow(x,2) + pow(y, 2));
-        normalize.x = normalize.x/mag;
-        normalize.y = normalize.y/mag;
-        return normalize;
+        this->x/=mag;
+        this->y/=mag;
+        return *this;
+        // normalize.x = normalize.x/mag;
+        // normalize.y = normalize.y/mag;
+        // return normalize;
     };
 
     Transform2D::Transform2D() {};
@@ -58,10 +61,10 @@ namespace turtlelib {
     Transform2D Transform2D::inv() const {
         Transform2D inv_trans = *this;
         inv_trans.r12 = r21;
-        inv_trans.r13 = -1*(r13 * r11 + r23 * r21);
+        inv_trans.r13 = -(r13 * r11 + r23 * r21);
         inv_trans.r21 = r12;
-        inv_trans.r23 = -1 * r23 * r11 + r13 * r21;
-        inv_trans.rot = -1*inv_trans.rotation();
+        inv_trans.r23 = -r23 * r11 + r13 * r21;
+        inv_trans.rot = -inv_trans.rotation();
         return inv_trans;
     };
 
@@ -100,7 +103,7 @@ namespace turtlelib {
         temp.r21 = r23;
         temp.r22 = r11;
         temp.r23 = r12;
-        temp.r31 = -1*r13;
+        temp.r31 = -r13;
         temp.r32 = r21;
         temp.r33 = r22;
         temp.rot = rot;
