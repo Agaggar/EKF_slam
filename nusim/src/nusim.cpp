@@ -159,7 +159,7 @@ private:
   std::vector<double> wheel_velocities{0.0, 0.0};
   double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
   turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
-  auto sd = nusim::msg::SensorData();
+  nusim::msg::SensorData sd = nusim::msg::SensorData();
   double encoder_ticks_per_rad = 651.8986;
 
   /// \brief Timer callback
