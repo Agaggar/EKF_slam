@@ -78,7 +78,11 @@ private:
   rclcpp::Service<turtle_control::srv::Teleport>::SharedPtr initial_pose_srv;
   rclcpp::TimerBase::SharedPtr timer;
   turtlelib::DiffDrive nubot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
-  sensor_msgs::msg::JointState js_msg;
+  sensor_msgs::msg::JointState js_msg; // = sensor_msgs::msg::JointState();
+  // js_msg.header.stamp = get_clock()->now();
+  // js_msg.name = std::vector<std::string>{"left wheel, right wheel"};
+  // js_msg.position = std::vector<double>{0.0, 0.0}; // assuming robot starts with wheels at 0, 0 
+  // js_msg.velocity = std::vector<double>{0.0, 0.0}; // assuming robot starts at rest 
   std::vector<double> config{0.0, 0.0, 0.0}; // x, y, theta
   geometry_msgs::msg::TransformStamped t;
   bool sd_received{false};
@@ -99,7 +103,7 @@ private:
     t.transform.rotation = q_geom;
     tf2_rostf_broadcaster->sendTransform(t);
     if (sd_received == true) {
-      odom_pub->publish(compute_odom());  
+      odom_pub->publish(compute_odom());
     }
   }
 
