@@ -184,8 +184,8 @@ private:
   /// \param request - Empty type
   /// \param response - Empty type
   void reset(
-    const std_srvs::srv::Empty::Request::SharedPtr request,
-    const std_srvs::srv::Empty::Response::SharedPtr response)
+    const std_srvs::srv::Empty::Request::SharedPtr,
+    const std_srvs::srv::Empty::Response::SharedPtr)
   {
     RCLCPP_INFO(get_logger(), "Resetting...");
     timestep = 0;
@@ -201,7 +201,7 @@ private:
   /// \param response - none
   void teleport(
     nusim::srv::Teleport::Request::SharedPtr request,
-    nusim::srv::Teleport::Response::SharedPtr response)
+    nusim::srv::Teleport::Response::SharedPtr)
   {
     RCLCPP_INFO(get_logger(), "Teleport service...");
     x0 = request->x;
