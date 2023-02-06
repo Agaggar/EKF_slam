@@ -20,7 +20,7 @@
 ///     none
 
 #include <cstdint>
-#include <math.hpp>
+#include <cmath>
 #include "rclcpp/rclcpp.hpp"
 #include "rcl_interfaces/msg/parameter_descriptor.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -125,8 +125,8 @@ private:
 
   turtle_control::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
     auto cmd = turtle_control::msg::WheelCommands();
-    cmd.left_velocity = int32_t fmod(wheel_vel.at(0)/motor_cmd_per_rad_sec, motor_cmd_max);
-    cmd.right_velocity = int32_t fmod(wheel_vel.at(1)/motor_cmd_per_rad_sec, motor_cmd_max);
+    cmd.left_velocity = int32_t (std::fmod(wheel_vel.at(0)/motor_cmd_per_rad_sec, motor_cmd_max));
+    cmd.right_velocity = int32_t (std::fmod(wheel_vel.at(1)/motor_cmd_per_rad_sec, motor_cmd_max));
     return cmd;
   }
 
