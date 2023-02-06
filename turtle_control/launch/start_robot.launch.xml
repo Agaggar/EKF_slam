@@ -1,4 +1,25 @@
 <launch>
+    <arg name="cmd_src" default="circle"
+        description="Choices for control input: ['circle', 'teleop', 'none']; defaults to circle." />
+    <arg name="robot" default="nusim" 
+        description="Choices for the robot: ['nusim', 'localhost', 'none']; defaults to nusim (simulator)." />
+    <arg name="use_rviz" default="true"
+        description="Choices to use rviz: ['true', 'false']; (declared in start_robot, used in load_one launch)" />
+    
     <node pkg="turtle_control" exec="turtle_control"
         args="--ros-args --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+    
+    <node pkg="turtle_control" exec="circle" args="--ros-args -p frequency:='100.0'" if="$(eval '\'$(var cmd_src)\' == \'circle\'')" />
+    <node pkg="teleop_twist_keyboard" exec="teleop_twist_keyboard" name="teleop"
+        output="screen" launch-prefix="xterm -e" if="$(eval '\'$(var cmd_src)\' == \'teleop\'')" />
+
+    <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py">
+        <arg name="use_rviz" value="$(var use_rviz)"/>
+        <arg name="color" value="blue"/>
+    </include>
+    <node pkg="tf2_ros" exec="static_transform_publisher"
+        args="0 0 0 0 0 0 nusim/world odom"/>
+    <node pkg="turtle_control" exec="odometry"
+        args="--ros-args -p body_id:='blue/base_footprint' -p odom_id:='odom' -p wheel_left:='wheel_left' -p wheel_right:='wheel_right'" />
+    
 </launch>
