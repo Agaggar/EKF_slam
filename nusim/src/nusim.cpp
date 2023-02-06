@@ -31,7 +31,8 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "nusim/srv/teleport.hpp"
-#include "turtle_control/msg/wheel_commands.hpp"
+#include "nusim/msg/wheel_commands.hpp"
+#include <math.hpp>
 
 using namespace std::chrono_literals;
 
@@ -129,7 +130,7 @@ public:
       "~/teleport",
       std::bind(&Nusim::teleport, this, std::placeholders::_1, std::placeholders::_2));
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
-    wheel_cmd_sub = create_subscription<turtle_control::msg::WheelCommands>("/cmd_vel", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
+    wheel_cmd_sub = create_subscription<nusim::msg::WheelCommands>("/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
   }
 
 private:
@@ -141,7 +142,7 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-  rclcpp::Subscription<turtle_control::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
+  rclcpp::Subscription<nusim::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
@@ -150,6 +151,8 @@ private:
   int marker_id = 0;
   visualization_msgs::msg::MarkerArray all_cyl;
   rclcpp::Time marker_time;
+  std::vector<double> wheel_velocities{0.0, 0.0};
+  double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
 
   /// \brief Timer callback
   void timer_callback()
@@ -179,6 +182,12 @@ private:
     timestep += 1;
     update_all_cylinders();
     marker_pub_->publish(all_cyl);
+  }
+
+  /// \brief Wheel_cmd subscription
+  void wheel_cmd_callback(nusim::msg::WheelCommand cmd) {
+    wheel_velocities.at(0) = cmd->left_velocity * max_rot_vel / 265.0;
+    wheel_velocities.at(1) = cmd->right_velocity * max_rot_vel / 265.0;
   }
 
   /// \brief Reset timestep by listening to reset service
