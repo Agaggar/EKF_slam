@@ -132,14 +132,14 @@ public:
 
 private:
   size_t timestep;
-  double x0; // = get_parameter_or("x0", 0.0);
-  double y0; // = get_parameter_or("y0", 0.0);
+  double x0;
+  double y0;
   double z0;
-  double theta0; // = get_parameter_or("theta0", 0.0);
-  double cyl_radius; // = get_parameter_or("cyl_radius", 0.05);
+  double theta0;
+  double cyl_radius;
   double cyl_height;
   std::vector<double> obs_x;
-  std::vector<double> obs_y; // = {};
+  std::vector<double> obs_y;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -151,12 +151,14 @@ private:
   tf2::Quaternion q;
   int marker_id = 0;
   visualization_msgs::msg::MarkerArray all_cyl;
+  rclcpp::Time marker_time;
 
   /// \brief Timer callback
   void timer_callback()
   {
     if (timestep == 0) {
       check_len();
+      marker_time = get_clock()->now();
       create_all_cylinders();
     }
     ts.data = timestep;
@@ -176,7 +178,6 @@ private:
     timestep += 1;
     update_all_cylinders();
     marker_pub_->publish(all_cyl);
-    // RCLCPP_INFO(get_logger(), "stuff: %f", t.transform.translation.x);
   }
 
   /// \brief Reset timestep by listening to reset service
@@ -189,8 +190,7 @@ private:
   {
     RCLCPP_INFO(get_logger(), "Resetting...");
     timestep = 0;
-    int loop = 0;
-    for (loop = 0; loop < (int)obs_x.size(); loop++) {
+    for (size_t loop = 0; loop < obs_x.size(); loop++) {
       all_cyl.markers.pop_back();
     }
   }
@@ -201,7 +201,7 @@ private:
   /// \param response - none
   void teleport(
     nusim::srv::Teleport::Request::SharedPtr request,
-    nusim::srv::Teleport::Response::SharedPtr response)
+    nusim::srv::Teleport::Response::SharedPtr)
   {
     RCLCPP_INFO(get_logger(), "Teleport service...");
     x0 = request->x;
@@ -216,14 +216,14 @@ private:
   {
     visualization_msgs::msg::Marker marker;
     marker.header.frame_id = "nusim/world";
-    marker.header.stamp = get_clock()->now();
+    marker.header.stamp = marker_time;
     marker.id = marker_id;
     marker.type = visualization_msgs::msg::Marker::CYLINDER;
     marker.action = visualization_msgs::msg::Marker::ADD;
     marker.color.a = 1.0;
-    marker.color.r = 202 / 256.0;
-    marker.color.g = 52 / 256.0;
-    marker.color.b = 51 / 256.0;
+    marker.color.r = 202.0 / 256.0;
+    marker.color.g = 52.0 / 256.0;
+    marker.color.b = 51.0 / 256.0;
     all_cyl.markers.push_back(marker);
     return marker;
   }
@@ -231,8 +231,7 @@ private:
   /// \brief Create all cylinders based on yaml
   void create_all_cylinders()
   {
-    int loop = 0;
-    for (loop = 0; loop < (int)obs_x.size(); loop++) {
+    for (size_t loop = 0; loop < obs_x.size(); loop++) {
       visualization_msgs::msg::Marker cylinder = create_cylinder();
       marker_id += 1;
     }
@@ -241,8 +240,7 @@ private:
   /// \brief Update positions, timesteps, etc when publishing
   void update_all_cylinders()
   {
-    int loop = 0;
-    for (loop = 0; loop < (int)obs_x.size(); loop++) {
+    for (size_t loop = 0; loop < obs_x.size(); loop++) {
       all_cyl.markers[loop].header.stamp = get_clock()->now();
       all_cyl.markers[loop].pose.position.x = obs_x[loop];
       all_cyl.markers[loop].pose.position.y = obs_y[loop];
