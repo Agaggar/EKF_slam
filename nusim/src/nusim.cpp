@@ -27,6 +27,7 @@
 #include "std_srvs/srv/empty.hpp"
 #include "rcl_interfaces/msg/parameter_descriptor.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
+#include "geometry_msgs/msg/point.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -53,7 +54,9 @@ public:
     cyl_radius(0.038),
     cyl_height(0.25),
     obs_x(std::vector<double> {0.0}),
-    obs_y(std::vector<double> {0.0})
+    obs_y(std::vector<double> {0.0}),
+    x_length(2.5),
+    y_length(2.5)
   {
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
     rate_param_desc.name = "rate";
@@ -119,6 +122,13 @@ public:
     declare_parameter("obstacles.y", rclcpp::ParameterValue(obs_y), obs_y_param_desc);
     get_parameter("obstacles.y", obs_y);
 
+
+    declare_parameter("x_length", rclcpp::ParameterValue(x_length));
+    get_parameter("x_length", x_length);
+
+    declare_parameter("y_length", rclcpp::ParameterValue(y_length));
+    get_parameter("y_length", y_length);
+
     RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
@@ -142,6 +152,7 @@ private:
   double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x;
   std::vector<double> obs_y;
+  double x_length, y_length;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -161,6 +172,8 @@ private:
   turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
   nusim::msg::SensorData sd = nusim::msg::SensorData();
   double encoder_ticks_per_rad = 651.8986;
+  visualization_msgs::msg::Marker walls_x, walls_y;
+  double wall_thickness = 0.1;
 
   /// \brief Timer callback
   void timer_callback()
@@ -169,6 +182,11 @@ private:
       check_len();
       marker_time = get_clock()->now();
       create_all_cylinders();
+      create_walls();
+      all_cyl.markers.push_back(walls_x);
+      update_all_cylinders();
+      all_cyl.markers.push_back(walls_y);
+
       init_x = x0;
       init_y = y0;
       init_z = z0;
@@ -188,7 +206,6 @@ private:
     t.transform.rotation.w = q.w();
     tf2_rostf_broadcaster_->sendTransform(t);
     timestep += 1;
-    update_all_cylinders();
     marker_pub_->publish(all_cyl);
     update_sd();
     sd_pub->publish(sd);
@@ -239,6 +256,50 @@ private:
     theta0 = request->theta;
   }
 
+  void create_walls() {
+    walls_x.header.frame_id = "nusim/world";
+    walls_x.header.stamp = marker_time;
+    walls_x.type = 6;
+    walls_x.id = marker_id;
+    walls_x.action = 0;
+    walls_x.scale.x = x_length; // 2 really long cubes in x-dir
+    walls_x.scale.y = wall_thickness;
+    walls_x.scale.z = 0.25;
+    walls_x.color.b = 1.0; // walls are blue
+    walls_x.color.a = 1.0;
+    std::vector<geometry_msgs::msg::Point> points;
+    points.push_back(
+      geometry_msgs::build<geometry_msgs::msg::Point>().
+      x(0.0).y(y_length/2.0 + wall_thickness/2.0).z(walls_x.scale.z/2.0));
+    points.push_back(
+      geometry_msgs::build<geometry_msgs::msg::Point>().
+      x(0.0).y(-y_length/2.0 - wall_thickness/2.0).z(walls_x.scale.z/2.0));
+    marker_id += 1;
+    walls_x.points = points;
+    
+    
+    points.pop_back();
+    points.pop_back(); // empty points to use for walls_y
+    walls_y.header.frame_id = "nusim/world";
+    walls_y.header.stamp = marker_time;
+    walls_y.type = 6;
+    walls_y.id = marker_id;
+    walls_y.action = 0;
+    walls_y.scale.x = wall_thickness;
+    walls_y.scale.y = y_length; // 2 really long cubes in y-dir
+    walls_y.scale.z = 0.25;
+    walls_y.color.b = 1.0; // walls are blue
+    walls_y.color.a = 1.0;
+    points.push_back(
+      geometry_msgs::build<geometry_msgs::msg::Point>().
+      x(x_length/2.0 + wall_thickness/2.0).y(0.0).z(walls_y.scale.z/2.0));
+    points.push_back(
+      geometry_msgs::build<geometry_msgs::msg::Point>().
+      x(-x_length/2.0 - wall_thickness/2.0).y(0.0).z(walls_y.scale.z/2.0));
+    marker_id += 1;
+    walls_y.points = points;
+  }
+
   /// \brief Create a single cylinder and add it to a MarkerArray
   ///
   /// \returns marker (cylinder)
@@ -271,7 +332,7 @@ private:
   void update_all_cylinders()
   {
     for (size_t loop = 0; loop < obs_x.size(); loop++) {
-      all_cyl.markers[loop].header.stamp = get_clock()->now();
+      all_cyl.markers[loop].header.stamp = marker_time;
       all_cyl.markers[loop].pose.position.x = obs_x[loop];
       all_cyl.markers[loop].pose.position.y = obs_y[loop];
       all_cyl.markers[loop].pose.position.z = cyl_height / 2.0;
