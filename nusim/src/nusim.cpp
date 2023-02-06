@@ -132,12 +132,7 @@ public:
 
 private:
   size_t timestep;
-  double x0;
-  double y0;
-  double z0;
-  double theta0;
-  double cyl_radius;
-  double cyl_height;
+  double x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x;
   std::vector<double> obs_y;
   std_msgs::msg::UInt64 ts;
@@ -160,6 +155,9 @@ private:
       check_len();
       marker_time = get_clock()->now();
       create_all_cylinders();
+      init_x = x0;
+      init_y = y0;
+      init_z = z0;
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
@@ -190,9 +188,12 @@ private:
   {
     RCLCPP_INFO(get_logger(), "Resetting...");
     timestep = 0;
-    for (size_t loop = 0; loop < obs_x.size(); loop++) {
-      all_cyl.markers.pop_back();
-    }
+    x0 = init_x;
+    y0 = init_y;
+    z0 = init_z;
+    // for (size_t loop = 0; loop < obs_x.size(); loop++) {
+    //   all_cyl.markers.pop_back();
+    // }
   }
 
   /// \brief Teleport robot based on teleport service
