@@ -89,7 +89,7 @@ private:
   /// \param response - Empty type
   void circle_callback(
     turtle_control::srv::Circle::Request::SharedPtr request,
-    const turtle_control::srv::Circle::Response::SharedPtr response)
+    const turtle_control::srv::Circle::Response::SharedPtr)
   {
     velocity = request->velocity;
     radius = request->radius;
@@ -102,8 +102,8 @@ private:
   /// \param request - Empty type
   /// \param response - Empty type
   void reverse_callback(
-    const turtle_control::srv::Reverse::Request::SharedPtr request,
-    const turtle_control::srv::Reverse::Response::SharedPtr response)
+    const turtle_control::srv::Reverse::Request::SharedPtr,
+    const turtle_control::srv::Reverse::Response::SharedPtr)
   {
     if (state != State::GO) {
         RCLCPP_INFO(get_logger(), "robot is not moving!");
@@ -118,8 +118,8 @@ private:
   /// \param request - Empty type
   /// \param response - Empty type
   void stop_callback(
-    const turtle_control::srv::Stop::Request::SharedPtr request,
-    const turtle_control::srv::Stop::Response::SharedPtr response)
+    const turtle_control::srv::Stop::Request::SharedPtr,
+    const turtle_control::srv::Stop::Response::SharedPtr)
   {
     state = State::END;
   }

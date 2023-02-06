@@ -106,7 +106,7 @@ private:
   }
 
   void ip_srv_callback(turtle_control::srv::Teleport::Request::SharedPtr request,
-                       turtle_control::srv::Teleport::Response::SharedPtr response) {
+                       turtle_control::srv::Teleport::Response::SharedPtr) {
     RCLCPP_INFO(get_logger(), "Teleport service...");
     nubot.setCurrentConfig(std::vector<double>{request->x, request->y, request->theta});
     config.at(0) = request->x;
