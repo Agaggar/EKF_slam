@@ -8,5 +8,8 @@
         args="--ros-args --params-file $(find-pkg-share nusim)/config/basic_world.yaml"/>
     
     <node pkg="rviz2" exec="rviz2" name="rviz2" 
-        args="-d $(find-pkg-share nusim)/config/nusim.rviz"/>
+        args="-d $(find-pkg-share nusim)/config/nusim.rviz">
+        <remap from="/wheel_cmd" to="red/wheel_cmd"/>
+        <remap from="/sensor_data" to="red/sensor_data"/>
+    </node>
 </launch>

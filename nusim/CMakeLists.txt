@@ -16,9 +16,15 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(turtlelib REQUIRED)
+find_package(builtin_interfaces REQUIRED)
+get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_srv
   "srv/Teleport.srv"
+  "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
+  "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
+  DEPENDENCIES builtin_interfaces
   LIBRARY_NAME ${PROJECT_NAME}
 )
 
@@ -37,7 +43,7 @@ ament_target_dependencies(
   tf2
   visualization_msgs
 )
-target_link_libraries(nusim "${cpp_typesupport_target}")
+target_link_libraries(nusim "${cpp_typesupport_target}" turtlelib::turtlelib)
 ament_export_dependencies(rosidl_default_runtime)
 
 install(
