@@ -31,6 +31,7 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "nusim/srv/teleport.hpp"
+#include "turtle_control/msg/wheel_commands.hpp"
 
 using namespace std::chrono_literals;
 
@@ -128,6 +129,7 @@ public:
       "~/teleport",
       std::bind(&Nusim::teleport, this, std::placeholders::_1, std::placeholders::_2));
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
+    wheel_cmd_sub = create_subscription<turtle_control::msg::WheelCommands>("/cmd_vel", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
   }
 
 private:
@@ -139,6 +141,7 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Subscription<turtle_control::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
@@ -179,12 +182,9 @@ private:
   }
 
   /// \brief Reset timestep by listening to reset service
-  ///
-  /// \param request - Empty type
-  /// \param response - Empty type
   void reset(
-    const std_srvs::srv::Empty::Request::SharedPtr request,
-    const std_srvs::srv::Empty::Response::SharedPtr response)
+    const std_srvs::srv::Empty::Request::SharedPtr,
+    const std_srvs::srv::Empty::Response::SharedPtr)
   {
     RCLCPP_INFO(get_logger(), "Resetting...");
     timestep = 0;
@@ -199,7 +199,6 @@ private:
   /// \brief Teleport robot based on teleport service
   ///
   /// \param request - nusim::srv::Teleport type, contains x, y, and theta
-  /// \param response - none
   void teleport(
     nusim::srv::Teleport::Request::SharedPtr request,
     nusim::srv::Teleport::Response::SharedPtr)
