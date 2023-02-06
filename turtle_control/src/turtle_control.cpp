@@ -88,7 +88,7 @@ private:
   double wheel_radius, track_width;
   int motor_cmd_max;
   double motor_cmd_per_rad_sec, encoder_ticks_per_rad, collision_radius;
-  turtlelib::DiffDrive nubot;
+  turtlelib::DiffDrive nubot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
   rclcpp::Publisher<turtle_control::msg::WheelCommands>::SharedPtr wheel_cmd_pub;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub;
@@ -102,7 +102,6 @@ private:
   void timer_callback()
   {
     current_time = get_clock()->now();
-    // RCLCPP_INFO(get_logger(), "node works");
     wheel_cmd_pub->publish(conv_vel_to_tick(nubot.ikinematics(qdot)));
     js_pub->publish(js_msg);
   }
