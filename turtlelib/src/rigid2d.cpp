@@ -312,7 +312,7 @@ namespace turtlelib {
                                             {wheel_track/wheel_radius, 1.0, 0.0}};
         std::vector<double> wheel_vel {H.at(0).at(0) * twist0.angular + H.at(0).at(1) * twist0.linearx + H.at(0).at(2) * twist0.lineary,
                                        H.at(1).at(0) * twist0.angular + H.at(1).at(1) * twist0.linearx + H.at(1).at(2) * twist0.lineary};
-        if (!almost_equal(wheel_vel.at(1), 0.0)) {
+        if (!almost_equal(twist0.lineary, 0.0)) {
             throw std::logic_error("wheels slipped! since y velocity is not 0");
         }
         else {
