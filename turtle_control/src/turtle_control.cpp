@@ -76,8 +76,8 @@ public:
 
     wheel_cmd_pub = create_publisher<turtle_control::msg::WheelCommands>("/wheel_cmd", 10);
     js_pub = create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
-    cmd_vel_sub = create_subscription<geometry_msgs::msg::Twist>("~/cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
-    sensor_data_sub = create_subscription<turtle_control::msg::SensorData>("~/sensor_data", 10, std::bind(&TurtleControl::sd_callback, this, std::placeholders::_1));
+    cmd_vel_sub = create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
+    sensor_data_sub = create_subscription<turtle_control::msg::SensorData>("/sensor_data", 10, std::bind(&TurtleControl::sd_callback, this, std::placeholders::_1));
     timer =
       create_wall_timer(
       std::chrono::milliseconds(int(1.0 / 200.0 * 1000)),
