@@ -21,6 +21,7 @@
 ///     none
 
 #include <chrono>
+#include <cmath>
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
 #include "std_srvs/srv/empty.hpp"
@@ -32,7 +33,9 @@
 #include "visualization_msgs/msg/marker.hpp"
 #include "nusim/srv/teleport.hpp"
 #include "nusim/msg/wheel_commands.hpp"
-#include <math.hpp>
+#include "nusim/msg/sensor_data.hpp"
+#include "turtlelib/diff_drive.hpp"
+#include "builtin_interfaces/msg/time.hpp"
 
 using namespace std::chrono_literals;
 
@@ -42,6 +45,7 @@ public:
   Nusim()
   : Node("nusim"),
     timestep(0),
+    rate(200.0),
     x0(0.0),
     y0(0.0),
     z0(0.0),
@@ -51,7 +55,6 @@ public:
     obs_x(std::vector<double> {0.0}),
     obs_y(std::vector<double> {0.0})
   {
-    double rate = 200.0;
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
     rate_param_desc.name = "rate";
     rate_param_desc.type = 3;         // rate is a double
@@ -131,11 +134,12 @@ public:
       std::bind(&Nusim::teleport, this, std::placeholders::_1, std::placeholders::_2));
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wheel_cmd_sub = create_subscription<nusim::msg::WheelCommands>("/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
+    sd_pub = create_publisher<nusim::msg::SensorData>("/sensor_data", 10);
   }
 
 private:
   size_t timestep;
-  double x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
+  double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x;
   std::vector<double> obs_y;
   std_msgs::msg::UInt64 ts;
@@ -143,6 +147,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Subscription<nusim::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
+  rclcpp::Publisher<nusim::msg::SensorData>::SharedPtr sd_pub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
@@ -153,6 +158,9 @@ private:
   rclcpp::Time marker_time;
   std::vector<double> wheel_velocities{0.0, 0.0};
   double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
+  turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
+  auto sd = nusim::msg::SensorData();
+  double encoder_ticks_per_rad = 651.8986;
 
   /// \brief Timer callback
   void timer_callback()
@@ -182,12 +190,25 @@ private:
     timestep += 1;
     update_all_cylinders();
     marker_pub_->publish(all_cyl);
+    update_sd();
+    sd_pub->publish(sd);
   }
 
   /// \brief Wheel_cmd subscription
-  void wheel_cmd_callback(nusim::msg::WheelCommand cmd) {
-    wheel_velocities.at(0) = cmd->left_velocity * max_rot_vel / 265.0;
-    wheel_velocities.at(1) = cmd->right_velocity * max_rot_vel / 265.0;
+  void wheel_cmd_callback(nusim::msg::WheelCommands cmd) {
+    wheel_velocities.at(0) = cmd.left_velocity * max_rot_vel / 265.0;
+    wheel_velocities.at(1) = cmd.right_velocity * max_rot_vel / 265.0;
+  }
+
+  /// \brief updating sensor data
+  void update_sd() {
+    sd.stamp.sec = floor(get_clock()->now().nanoseconds()/1e-9);
+    sd.stamp.nanosec = get_clock()->now().nanoseconds() - sd.stamp.sec * 1e9;
+    double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
+    double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
+    redbot.fkinematics(std::vector<double>{left_new_pos, right_new_pos});
+    sd.left_encoder = floor(left_new_pos * encoder_ticks_per_rad);
+    sd.right_encoder = floor(right_new_pos * encoder_ticks_per_rad);
   }
 
   /// \brief Reset timestep by listening to reset service
