@@ -129,7 +129,6 @@ public:
     declare_parameter("y_length", rclcpp::ParameterValue(y_length));
     get_parameter("y_length", y_length);
 
-    RCLCPP_INFO(get_logger(), "stuff: %f, %f, %f, %f", rate, x0, y0, theta0);
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     timer_ =
