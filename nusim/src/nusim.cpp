@@ -33,8 +33,8 @@
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "visualization_msgs/msg/marker.hpp"
 #include "nusim/srv/teleport.hpp"
-#include "nusim/msg/wheel_commands.hpp"
-#include "nusim/msg/sensor_data.hpp"
+#include "nuturtlebot_msgs/msg/wheel_commands.hpp"
+#include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "turtlelib/diff_drive.hpp"
 #include "builtin_interfaces/msg/time.hpp"
 
@@ -142,8 +142,8 @@ public:
       "~/teleport",
       std::bind(&Nusim::teleport, this, std::placeholders::_1, std::placeholders::_2));
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
-    wheel_cmd_sub = create_subscription<nusim::msg::WheelCommands>("/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
-    sd_pub = create_publisher<nusim::msg::SensorData>("/sensor_data", 10);
+    wheel_cmd_sub = create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
+    sd_pub = create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
   }
 
 private:
@@ -156,8 +156,8 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-  rclcpp::Subscription<nusim::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
-  rclcpp::Publisher<nusim::msg::SensorData>::SharedPtr sd_pub;
+  rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
+  rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sd_pub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
@@ -169,7 +169,7 @@ private:
   std::vector<double> wheel_velocities{0.0, 0.0};
   double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
   turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
-  nusim::msg::SensorData sd = nusim::msg::SensorData();
+  nuturtlebot_msgs::msg::SensorData sd = nuturtlebot_msgs::msg::SensorData();
   double encoder_ticks_per_rad = 651.8986;
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
@@ -211,7 +211,7 @@ private:
   }
 
   /// \brief Wheel_cmd subscription
-  void wheel_cmd_callback(nusim::msg::WheelCommands cmd) {
+  void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd) {
     wheel_velocities.at(0) = cmd.left_velocity * max_rot_vel / 265.0;
     wheel_velocities.at(1) = cmd.right_velocity * max_rot_vel / 265.0;
   }

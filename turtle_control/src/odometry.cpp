@@ -52,7 +52,6 @@ public:
     get_parameter("wheel_right", wheel_right);
     std::vector<std::string> params_set {body_id, wheel_left, wheel_right};
     for (unsigned int i = 0; i < params_set.size(); i++) {
-      RCLCPP_INFO(get_logger(), "param %d", i);
       if (params_set.at(i) == std::to_string(-1.0)) {
         RCLCPP_ERROR(get_logger(), "One or more parameters not set!");
         rclcpp::shutdown();

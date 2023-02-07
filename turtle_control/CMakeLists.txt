@@ -21,6 +21,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
+find_package(nuturtlebot_msgs REQUIRED)
 get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 # add_library(turtlelib ${DIR_ABOVE}/nuturtle-Agaggar/turtlelib/src/rigid2d.cpp)
 # target_include_directories(turtlelib PUBLIC include/)
@@ -30,12 +31,12 @@ get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 # target_compile_options(turtlelib PUBLIC -Wall -Wextra -Wpedantic)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_msgs
-  "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
-  "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
+  # "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
+  # "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
   "${DIR_ABOVE}/nuturtle-Agaggar/nusim:srv/Teleport.srv"
-  "${CMAKE_CURRENT_SOURCE_DIR}:srv/Circle.srv"
-  "${CMAKE_CURRENT_SOURCE_DIR}:srv/Reverse.srv"
-  "${CMAKE_CURRENT_SOURCE_DIR}:srv/Stop.srv"
+  "srv/Circle.srv"
+  "srv/Reverse.srv"
+  "srv/Stop.srv"
   DEPENDENCIES builtin_interfaces
   LIBRARY_NAME ${PROJECT_NAME}
 )
@@ -56,6 +57,7 @@ ament_target_dependencies(
   geometry_msgs
   builtin_interfaces
   sensor_msgs
+  nuturtlebot_msgs
 )
 
 target_link_libraries(turtle_control "${cpp_typesupport_target}" turtlelib::turtlelib)
@@ -86,6 +88,7 @@ ament_target_dependencies(
   std_srvs
   rcl_interfaces
   geometry_msgs
+  nuturtlebot_msgs
 )
 target_link_libraries(circle "${cpp_typesupport_target}")
 
