@@ -106,12 +106,15 @@ TEST_CASE( "Stream insertion operator <<", "[transform]" ) // Ava, Zahedi
    REQUIRE( (sstr.str() + "\n") == str );
 }
 
+// this test works if you press enter during operation
+// this test does not work if you use the commented sstr instead
 TEST_CASE( "Stream extraction operator >>", "[transform]" ) // Ava, Zahedi
 {
    turtlelib::Transform2D tf = turtlelib::Transform2D();
-   std::stringstream sstr;
-   sstr << "deg: 90 x: 1 y: 3.4";
+//    std::istringstream sstr("deg: 90 x: 1 y: 3.4\n");
+   std::istringstream sstr("90 1 3.4\n");
    sstr >> tf;
+   REQUIRE( std::to_string(tf.rotation()) == std::to_string(turtlelib::PI/2.0));
    REQUIRE( turtlelib::almost_equal(tf.rotation(), turtlelib::deg2rad(90), 0.00001) );
    REQUIRE( turtlelib::almost_equal(tf.translation().x, 1.0, 0.00001) );
    REQUIRE( turtlelib::almost_equal(tf.translation().y, 3.4, 0.00001) );

@@ -150,11 +150,9 @@ namespace turtlelib {
     std::istream & operator>>(std::istream & is, Transform2D & tf) {
         double deg, transx, transy;
         is >> deg >> transx >> transy;
-        Vector2D temp{transx, transy};
-        // temp.x = transx;
-        // temp.y = transy;
-        tf = Transform2D(temp, deg2rad(deg));
+        tf = Transform2D(Vector2D{transx, transy}, deg2rad(deg));
         std::cin.ignore(50, '\n');
+        // std::cin.clear();
         return is;
     };
 
@@ -173,7 +171,8 @@ namespace turtlelib {
             is.get();
         }
         is >> v.x >> v.y;
-        // std::cin.ignore(50, '\n');
+        std::cin.ignore(50, '\n');
+        // std::cin.clear();
         return is;
     };
 
@@ -182,12 +181,13 @@ namespace turtlelib {
     };
 
     std::istream & operator>>(std::istream & is, Twist2D & t) {
-        char c1 = is.peek();
-        if (c1 == '[') {
+        // char c1 = is.peek();
+        if (is.peek() == '[') {
             is.get();
         }
         is >> t.angular >> t.linearx >> t.lineary;
-        std::cin.ignore(50, ']');
+        std::cin.ignore(50, '\n');
+        // std::cin.clear();
         return is;
     };
 
