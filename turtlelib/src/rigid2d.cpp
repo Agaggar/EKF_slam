@@ -18,44 +18,69 @@ namespace turtlelib {
 
     Transform2D::Transform2D() {};
 
-    Transform2D::Transform2D(const Vector2D& trans) {
-        r31 = trans.x;
-        r32 = trans.y;
+    Transform2D::Transform2D(const Vector2D& trans): 
+        r31(trans.x),
+        r32(trans.y)
+    {
+        // r31 = trans.x;
+        // r32 = trans.y;
     };
 
-    Transform2D::Transform2D(double radians) {
-        r11 = cos(radians);
-        r12 = -1*sin(radians);
-        r21 = sin(radians);
-        r22 = cos(radians);
-        rot = radians;
+    Transform2D::Transform2D(double radians):
+        r11(cos(radians)),
+        r12(-sin(radians)),
+        r21(sin(radians)),
+        r22(cos(radians)),
+        rot(radians)
+    {
+        // r11 = cos(radians);
+        // r12 = -1*sin(radians);
+        // r21 = sin(radians);
+        // r22 = cos(radians);
+        // rot = radians;
     };
 
-    Transform2D::Transform2D(const Vector2D& trans, double radians) {
-        r11 = cos(radians);
-        r12 = -1*sin(radians);
-        r21 = sin(radians);
-        r22 = cos(radians);
-        r13 = trans.x;
-        r23 = trans.y;
-        rot = radians;
+    Transform2D::Transform2D(const Vector2D& trans, double radians):
+        r11(cos(radians)),
+        r12(-sin(radians)),
+        r21(sin(radians)),
+        r22(cos(radians)),
+        r13(trans.x),
+        r23(trans.y),
+        rot(radians)
+    {
+        // r11 = cos(radians);
+        // r12 = -1*sin(radians);
+        // r21 = sin(radians);
+        // r22 = cos(radians);
+        // r13 = trans.x;
+        // r23 = trans.y;
+        // rot = radians;
     };
 
-    Transform2D::Transform2D(const Twist2D& twist) {
-        r11 = cos(twist.angular);
-        r12 = -1*sin(twist.angular);
-        r21 = sin(twist.angular);
-        r22 = cos(twist.angular);
-        r13 = twist.linearx;
-        r23 = twist.lineary;
-        rot = twist.angular;
+    Transform2D::Transform2D(const Twist2D& twist):
+        r11(cos(twist.angular)),
+        r12(-sin(twist.angular)),
+        r21(sin(twist.angular)),
+        r22(cos(twist.angular)),
+        r13(twist.linearx),
+        r23(twist.lineary),
+        rot(twist.angular)
+    {
+        // r11 = cos(twist.angular);
+        // r12 = -1*sin(twist.angular);
+        // r21 = sin(twist.angular);
+        // r22 = cos(twist.angular);
+        // r13 = twist.linearx;
+        // r23 = twist.lineary;
+        // rot = twist.angular;
     };
 
     Vector2D Transform2D::operator()(const Vector2D& v) const {
-        Vector2D tran_vec;
-        tran_vec.x = r11 * v.x + r12 * v.y + r13;
-        tran_vec.y = r21 * v.x + r22 * v.y + r23;
-        return tran_vec;
+        // Vector2D tran_vec;
+        // tran_vec.x = r11 * v.x + r12 * v.y + r13;
+        // tran_vec.y = r21 * v.x + r22 * v.y + r23;
+        return Vector2D{r11 * v.x + r12 * v.y + r13, r21 * v.x + r22 * v.y + r23};
     };
 
     Transform2D Transform2D::inv() const {
@@ -85,10 +110,10 @@ namespace turtlelib {
     };
 
     Vector2D Transform2D::translation() const {
-        Vector2D tran_trans;
-        tran_trans.x = r13;
-        tran_trans.y = r23;
-        return tran_trans;
+        // Vector2D tran_trans;
+        // tran_trans.x = r13;
+        // tran_trans.y = r23;
+        return Vector2D{r13, r23};
     };
 
     double Transform2D::rotation() const {
@@ -125,9 +150,9 @@ namespace turtlelib {
     std::istream & operator>>(std::istream & is, Transform2D & tf) {
         double deg, transx, transy;
         is >> deg >> transx >> transy;
-        Vector2D temp;
-        temp.x = transx;
-        temp.y = transy;
+        Vector2D temp{transx, transy};
+        // temp.x = transx;
+        // temp.y = transy;
         tf = Transform2D(temp, deg2rad(deg));
         std::cin.ignore(50, '\n');
         return is;
