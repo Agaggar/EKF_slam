@@ -170,7 +170,8 @@ private:
   double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
   turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
   nuturtlebot_msgs::msg::SensorData sd = nuturtlebot_msgs::msg::SensorData();
-  double encoder_ticks_per_rad = 651.8986;
+  double encoder_ticks_per_rad = 651.8986; // #TODO: can declare as parameter
+  double motor_cmd_per_rad_sec = 0.024;
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
 
@@ -212,8 +213,8 @@ private:
 
   /// \brief Wheel_cmd subscription
   void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd) {
-    wheel_velocities.at(0) = cmd.left_velocity * max_rot_vel / 265.0;
-    wheel_velocities.at(1) = cmd.right_velocity * max_rot_vel / 265.0;
+    wheel_velocities.at(0) = cmd.left_velocity * motor_cmd_per_rad_sec * max_rot_vel / 265.0;
+    wheel_velocities.at(1) = cmd.right_velocity * motor_cmd_per_rad_sec * max_rot_vel / 265.0;
   }
 
   /// \brief updating sensor data

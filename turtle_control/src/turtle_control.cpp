@@ -103,6 +103,7 @@ private:
   void timer_callback()
   {
     current_time = get_clock()->now();
+    // RCLCPP_INFO(get_logger(), "vel to ticks: %f, %f", nubot.ikinematics(qdot).at(0), nubot.ikinematics(qdot).at(1));
     wheel_cmd_pub->publish(conv_vel_to_tick(nubot.ikinematics(qdot)));
     js_pub->publish(js_msg);
   }
