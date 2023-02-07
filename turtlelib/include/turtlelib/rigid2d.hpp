@@ -273,11 +273,6 @@ namespace turtlelib
         /// for a description
         friend std::ostream & operator<<(std::ostream & os, const Transform2D & tf);
 
-        /// \brief integrate a twist for one unit time 
-        /// \param twist0 - twist to integrate 
-        /// \return the transformation result from integrating by one time-unit 
-        Transform2D integrate_twist(Twist2D twist0);
-
     };
 
 

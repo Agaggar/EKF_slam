@@ -56,6 +56,11 @@ namespace turtlelib
         /// \param wheel_track - wheel_track to set 
         void setWheelTrack(double wheel_track);
 
+        /// \brief integrate a twist for one unit time 
+        /// \param twist0 - twist to integrate 
+        /// \return the transformation result from integrating by one time-unit 
+        Transform2D integrate_twist(Twist2D twist0);
+
         /// \brief Compute forward kinematics
         /// \param phi_new - new wheel positions
         void fkinematics(const std::vector<double> phi_new);

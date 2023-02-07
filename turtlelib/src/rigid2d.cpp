@@ -264,25 +264,6 @@ namespace turtlelib {
         return acos(dot(vec1, vec2)/magnitude(vec1)/magnitude(vec2));
     };
 
-    Transform2D Transform2D::integrate_twist(Twist2D twist0) {
-        Transform2D Tbbprime;
-        if (turtlelib::almost_equal(twist0.angular, 0.0, 1e-6)) {
-            Tbbprime = Transform2D{Vector2D{twist0.linearx, twist0.lineary}, 0.0};
-        }
-        else {
-            double dtheta = twist0.angular;
-            double ys = -twist0.linearx/twist0.angular;
-            double xs = twist0.lineary/twist0.angular;
-            Transform2D Tsb = Transform2D{Vector2D{xs, ys}, 0.0};
-            Transform2D Tssprime = Transform2D{dtheta};
-            Tbbprime = (Tsb.inv() * Tssprime) * Tsb;
-        }
-        // Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
-        // Twist2D dq = Transform2D{twist0.angular}.adj().conv_diff_frame(dqb);
-        // return Transform2D{dq};
-        return Tbbprime;
-    };
-
     DiffDrive::DiffDrive() {};
 
     DiffDrive::DiffDrive(const double qx, const double qy, const double qtheta) {
@@ -312,10 +293,32 @@ namespace turtlelib {
         this->wheel_track = wheel_track;
     };
 
+    Transform2D DiffDrive::integrate_twist(Twist2D twist0) {
+        Transform2D Tbbprime;
+        if (turtlelib::almost_equal(twist0.angular, 0.0, 1e-6)) {
+            Tbbprime = Transform2D{Vector2D{twist0.linearx, twist0.lineary}, 0.0};
+        }
+        else {
+            double dtheta = twist0.angular;
+            double ys = -twist0.linearx/twist0.angular;
+            double xs = twist0.lineary/twist0.angular;
+            Transform2D Tsb = Transform2D{Vector2D{xs, ys}, 0.0};
+            Transform2D Tssprime = Transform2D{dtheta};
+            Tbbprime = (Tsb.inv() * Tssprime) * Tsb;
+        }
+        // Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
+        // Twist2D dq = Transform2D{twist0.angular}.adj().conv_diff_frame(dqb);
+        // return Transform2D{dq};
+        return Tbbprime;
+    };
+
     void DiffDrive::fkinematics(const std::vector<double> phinew) {
         double phi_rprime = phinew.at(0) - phi.at(0);
         double phi_lprime = phinew.at(1) - phi.at(1);
-        Twist2D dq = velToTwist(std::vector<double>{phi_rprime, phi_lprime});
+        Twist2D Vb = velToTwist(std::vector<double>{phi_rprime, phi_lprime});
+        Transform2D Tbbprime = integrate_twist(Vb);
+        Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
+        Twist2D dq = Transform2D{Vb.angular}.adj().conv_diff_frame(dqb);
         q.at(0) += dq.linearx;
         q.at(1) += dq.lineary;
         q.at(2) += dq.angular;

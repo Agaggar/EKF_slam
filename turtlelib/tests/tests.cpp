@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include "turtlelib/rigid2d.hpp"
+#include "turtlelib/diff_drive.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -176,21 +177,22 @@ TEST_CASE("vector operators", "[vector2d]") {
 }
 
 TEST_CASE("inverse kinematics pure translation", "[twist2d]") {
-    turtlelib::Transform2D base_frame = turtlelib::Transform2D(turtlelib::Vector2D{1.0, -1.0}, turtlelib::PI/2);
+    turtlelib::DiffDrive tbot{0.0, 0.0, 0.0};
+    // turtlelib::Transform2D base_frame = turtlelib::Transform2D(turtlelib::Vector2D{1.0, -1.0}, turtlelib::PI/2);
     turtlelib::Twist2D twist0 = turtlelib::Twist2D{0.0, 1.0, -1.0};
-    turtlelib::Transform2D transform_test = base_frame.integrate_twist(twist0);
+    turtlelib::Transform2D transform_test = tbot.integrate_twist(twist0);
     REQUIRE( turtlelib::almost_equal(transform_test.translation().x, 1.0));
     REQUIRE( turtlelib::almost_equal(transform_test.translation().y, -1.0));
     REQUIRE( turtlelib::almost_equal(transform_test.rotation(), 0.0));
 
     twist0 = turtlelib::Twist2D{turtlelib::PI/4.0, 0.0, 0.0};
-    transform_test = base_frame.integrate_twist(twist0);
+    transform_test = tbot.integrate_twist(twist0);
     REQUIRE( turtlelib::almost_equal(transform_test.translation().x, 0.0));
     REQUIRE( turtlelib::almost_equal(transform_test.translation().y, 0.0));
     REQUIRE( turtlelib::almost_equal(transform_test.rotation(), turtlelib::PI/4.0));
 
     twist0 = turtlelib::Twist2D{turtlelib::PI/4.0, 1.0, -1.0};
-    transform_test = base_frame.integrate_twist(twist0);
+    transform_test = tbot.integrate_twist(twist0);
     // REQUIRE(std::to_string(transform_test.translation().y) == std::to_string(-4/turtlelib::PI));
     // REQUIRE( std::to_string(transform_test.translation().x) == std::to_string((4*sqrt(2.0)-4)/turtlelib::PI));
     // REQUIRE( turtlelib::almost_equal(transform_test.translation().x, (4*sqrt(2.0)-4)/turtlelib::PI));
@@ -200,7 +202,7 @@ TEST_CASE("inverse kinematics pure translation", "[twist2d]") {
     REQUIRE( turtlelib::almost_equal(transform_test.rotation(), turtlelib::PI/4.0));
 
     twist0 = turtlelib::Twist2D{-1.24, -2.15, -2.92}; // Morales, Nick
-    transform_test = base_frame.integrate_twist(twist0);
+    transform_test = tbot.integrate_twist(twist0);
     // REQUIRE( std::to_string(transform_test.rotation()) == std::to_string(-1.24));
     REQUIRE( turtlelib::almost_equal(transform_test.translation().x, -3.2298632647, 1e-5));
     REQUIRE( turtlelib::almost_equal(transform_test.translation().y, -1.05645265, 1e-5));
