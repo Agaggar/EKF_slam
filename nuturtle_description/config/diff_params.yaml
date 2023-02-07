@@ -3,6 +3,6 @@
     wheel_radius: 0.033 # m
     track_width: 0.16 # m
     motor_cmd_max: 265 # motor provided commands on range of [-max, max]
-    motor_cmd_per_rad_sec: 0.024 # motor command tick in rad/s
+    motor_cmd_per_rad_sec: 41.6666666666667 # motor command tick in rad/s
     encoder_ticks_per_rad: 651.8986 # 2^12/(2*pi)
     collision_radius: 0.11

@@ -40,7 +40,7 @@ public:
     wheel_radius(0.033),
     track_width(0.16), 
     motor_cmd_max(265),
-    motor_cmd_per_rad_sec(0.024), 
+    motor_cmd_per_rad_sec(1.0 / 0.024), 
     encoder_ticks_per_rad(651.8986),
     collision_radius(0.11),
     nubot()
@@ -119,7 +119,8 @@ private:
   /// \brief sensor_data subscription callback
   sensor_msgs::msg::JointState sd_callback(const nuturtlebot_msgs::msg::SensorData sd) {
     js_msg.header.stamp = get_clock()->now();
-    js_msg.name = std::vector<std::string>{"left wheel, right wheel"};
+    js_msg.header.frame_id = "blue/base_footprint";
+    js_msg.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
     js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
     return js_msg;
@@ -127,8 +128,19 @@ private:
 
   nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
     nuturtlebot_msgs::msg::WheelCommands cmd;
-    cmd.left_velocity = int32_t (std::fmod(wheel_vel.at(0)/motor_cmd_per_rad_sec, motor_cmd_max));
-    cmd.right_velocity = int32_t (std::fmod(wheel_vel.at(1)/motor_cmd_per_rad_sec, motor_cmd_max));
+    if ((wheel_vel.at(0) * motor_cmd_per_rad_sec) > motor_cmd_max) {
+      cmd.left_velocity = int32_t (motor_cmd_max);  
+    }
+    else {
+      cmd.left_velocity = int32_t (wheel_vel.at(0) * motor_cmd_per_rad_sec);
+    }
+    if ((wheel_vel.at(1) * motor_cmd_per_rad_sec) > motor_cmd_max) {
+      cmd.right_velocity = int32_t (motor_cmd_max);  
+    }
+    else {
+      cmd.right_velocity = int32_t (wheel_vel.at(1) * motor_cmd_per_rad_sec);
+    }
+    // cmd.right_velocity = int32_t (std::fmod(wheel_vel.at(1) * motor_cmd_per_rad_sec, motor_cmd_max));
     return cmd;
   }
 

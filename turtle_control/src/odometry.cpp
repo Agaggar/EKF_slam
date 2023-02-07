@@ -59,7 +59,7 @@ public:
     }
     tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     odom_pub = create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
-    js_sub = create_subscription<sensor_msgs::msg::JointState>("/joint_states", 10, std::bind(&Odometry::js_callback, this, std::placeholders::_1));
+    js_sub = create_subscription<sensor_msgs::msg::JointState>("/blue/joint_states", 10, std::bind(&Odometry::js_callback, this, std::placeholders::_1));
     initial_pose_srv = create_service<turtle_control::srv::Teleport>(
       "/initial_pose",
       std::bind(&Odometry::ip_srv_callback, this, std::placeholders::_1, std::placeholders::_2));
@@ -84,7 +84,7 @@ private:
   // js_msg.velocity = std::vector<double>{0.0, 0.0}; // assuming robot starts at rest 
   std::vector<double> config{0.0, 0.0, 0.0}; // x, y, theta
   geometry_msgs::msg::TransformStamped t;
-  bool sd_received{false};
+  // bool sd_received{false};
 
   /// \brief Timer callback
   void timer_callback()
@@ -100,17 +100,19 @@ private:
     q.normalize();
     geometry_msgs::msg::Quaternion q_geom = tf2::toMsg(q);
     t.transform.rotation = q_geom;
+    // RCLCPP_INFO(get_logger(), std::cout << t);
     tf2_rostf_broadcaster->sendTransform(t);
-    if (sd_received == true) {
-      odom_pub->publish(compute_odom());
-    }
+    odom_pub->publish(compute_odom());
+    // if (js_msg.velocity.size() > 0) {
+    //   odom_pub->publish(compute_odom());
+    // }
   }
 
   void js_callback(const sensor_msgs::msg::JointState js) {
     js_msg = js;
-    if (sd_received == false && (js_msg.velocity.size() > 0)) {
+    if ((js_msg.velocity.size() > 0)) {
       nubot.fkinematics(js.position);
-      sd_received = true;
+      // sd_received = true;
     }
   }
 
@@ -128,22 +130,21 @@ private:
     odom_msg.header.stamp = get_clock()->now();
     odom_msg.header.frame_id = odom_id;
     odom_msg.child_frame_id = body_id;
-    // RCLCPP_INFO(get_logger(), "node works 0");
     odom_msg.pose.pose.position.x = nubot.getCurrentConfig().at(0);
-    // RCLCPP_INFO(get_logger(), "node works 1");
     odom_msg.pose.pose.position.y = nubot.getCurrentConfig().at(1);
     odom_msg.pose.pose.position.z = 0.0;
     tf2::Quaternion q;
-    // RCLCPP_INFO(get_logger(), "node works 2");
     q.setRPY(0.0, 0.0, nubot.getCurrentConfig().at(2));
-    // RCLCPP_INFO(get_logger(), "node works 3");
     q.normalize();
     geometry_msgs::msg::Quaternion q_geom = tf2::toMsg(q);
     odom_msg.pose.pose.orientation = q_geom;
     std::array<double, 36> cov;
     cov.fill(0.0);
     odom_msg.pose.covariance = cov;
-    turtlelib::Twist2D vb = nubot.velToTwist(js_msg.velocity);
+    turtlelib::Twist2D vb{0.0, 0.0, 0.0};
+    if ((js_msg.velocity.size() > 0)) {
+      vb = nubot.velToTwist(js_msg.velocity);
+    }
     odom_msg.twist.twist.linear.x = vb.linearx;
     odom_msg.twist.twist.linear.y = vb.lineary;
     odom_msg.twist.twist.linear.z = 0.0;

@@ -167,11 +167,11 @@ private:
   visualization_msgs::msg::MarkerArray all_cyl;
   rclcpp::Time marker_time;
   std::vector<double> wheel_velocities{0.0, 0.0};
-  double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
+  // double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
   turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
   nuturtlebot_msgs::msg::SensorData sd = nuturtlebot_msgs::msg::SensorData();
   double encoder_ticks_per_rad = 651.8986; // #TODO: can declare as parameter
-  double motor_cmd_per_rad_sec = 0.024;
+  double motor_cmd_per_rad_sec = 1.0 / 0.024;
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
 
@@ -213,19 +213,19 @@ private:
 
   /// \brief Wheel_cmd subscription
   void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd) {
-    wheel_velocities.at(0) = cmd.left_velocity * motor_cmd_per_rad_sec * max_rot_vel / 265.0;
-    wheel_velocities.at(1) = cmd.right_velocity * motor_cmd_per_rad_sec * max_rot_vel / 265.0;
+    wheel_velocities.at(0) = cmd.left_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
+    wheel_velocities.at(1) = cmd.right_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
   }
 
   /// \brief updating sensor data
   void update_sd() {
-    sd.stamp.sec = floor(get_clock()->now().nanoseconds()/1e-9);
+    sd.stamp.sec = floor(get_clock()->now().nanoseconds()*1e-9);
     sd.stamp.nanosec = get_clock()->now().nanoseconds() - sd.stamp.sec * 1e9;
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
     redbot.fkinematics(std::vector<double>{left_new_pos, right_new_pos});
-    sd.left_encoder = floor(left_new_pos * encoder_ticks_per_rad);
-    sd.right_encoder = floor(right_new_pos * encoder_ticks_per_rad);
+    sd.left_encoder += floor(left_new_pos * encoder_ticks_per_rad);
+    sd.right_encoder += floor(right_new_pos * encoder_ticks_per_rad);
   }
 
   /// \brief Reset timestep by listening to reset service
