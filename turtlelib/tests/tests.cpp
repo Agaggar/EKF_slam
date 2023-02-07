@@ -83,7 +83,7 @@ TEST_CASE("Adjugate function", "[transform2d]" ) {
 //    REQUIRE( turtlelib::almost_equal(transform_test.adj().r22, 0.707106781));
 //    REQUIRE( turtlelib::almost_equal(transform_test.adj().r32, 0.707106781));
    REQUIRE( turtlelib::almost_equal(transform_test.adj().translation().x, 0.0));
-   REQUIRE( turtlelib::almost_equal(transform_test.adj().translation().y, -1*0.707106781, 1.0e-8));
+   REQUIRE( turtlelib::almost_equal(transform_test.adj().translation().y, -0.707106781, 1.0e-8));
 //    REQUIRE( turtlelib::almost_equal(transform_test.adj().r33, 0.707106781));
    REQUIRE( turtlelib::almost_equal(transform_test.adj().rotation(), turtlelib::PI/4));
 }

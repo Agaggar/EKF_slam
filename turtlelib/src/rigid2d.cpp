@@ -169,8 +169,7 @@ namespace turtlelib {
     }
 
     std::istream & operator>>(std::istream & is, Vector2D & v) {
-        char c1 = is.peek();
-        if (c1 == '[') {
+        if (is.peek() == '[') {
             is.get();
         }
         is >> v.x >> v.y;
