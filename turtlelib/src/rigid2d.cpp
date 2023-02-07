@@ -306,9 +306,6 @@ namespace turtlelib {
             Transform2D Tssprime = Transform2D{dtheta};
             Tbbprime = (Tsb.inv() * Tssprime) * Tsb;
         }
-        // Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
-        // Twist2D dq = Transform2D{twist0.angular}.adj().conv_diff_frame(dqb);
-        // return Transform2D{dq};
         return Tbbprime;
     };
 
@@ -349,6 +346,10 @@ namespace turtlelib {
 
     std::vector<double> DiffDrive::getWheelPos() {
         return this->phi;
+    };
+
+    void DiffDrive::setWheelPos(std::vector<double> phinew) {
+        this->phi = phinew;
     };
 
     std::vector<double> DiffDrive::getCurrentConfig() {

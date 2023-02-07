@@ -79,6 +79,10 @@ namespace turtlelib
         /// \return wheel positions
         std::vector<double> getWheelPos();
 
+        /// \brief Set Wheel Positions
+        /// \param phinew - new wheel positions
+        void setWheelPos(std::vector<double> phinew);
+
         /// \brief Get current configuration
         /// \return current configuration (x, y, theta)
         std::vector<double> getCurrentConfig();
