@@ -1,9 +1,9 @@
 nusim:
   ros__parameters:
-    x0: -0.6 # m, robot
-    y0: 0.8 # m, robot
+    x0: 0.0 # m, robot
+    y0: 0.0 # m, robot
     z0: 0.0 # m, robot
-    theta0: 1.57 # rad, robot heading
+    theta0: 0.0 # rad, robot heading
     x_length: 2.0 # m, length of arena in x-dir
     y_length: 2.0 # m, length of arena in y-dir
     obstacles:
