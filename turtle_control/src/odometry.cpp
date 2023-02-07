@@ -109,11 +109,12 @@ private:
   }
 
   void js_callback(const sensor_msgs::msg::JointState js) {
-    js_msg = js;
     if ((js_msg.velocity.size() > 0)) {
-      nubot.fkinematics(js.position);
+      nubot.fkinematics(std::vector<double>{js.position.at(0) - js_msg.position.at(0),
+                                            js.position.at(1) - js_msg.position.at(1)});
       // sd_received = true;
     }
+    js_msg = js;
   }
 
   void ip_srv_callback(turtle_control::srv::Teleport::Request::SharedPtr request,

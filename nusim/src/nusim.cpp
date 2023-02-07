@@ -224,6 +224,10 @@ private:
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
     redbot.fkinematics(std::vector<double>{left_new_pos, right_new_pos});
+    x0 = redbot.getCurrentConfig().at(0);
+    y0 = redbot.getCurrentConfig().at(1);
+    theta0 = redbot.getCurrentConfig().at(2);
+    RCLCPP_INFO(get_logger(), "redbot pos: %f, %f, %f", redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), redbot.getCurrentConfig().at(2));
     sd.left_encoder += floor(left_new_pos * encoder_ticks_per_rad);
     sd.right_encoder += floor(right_new_pos * encoder_ticks_per_rad);
   }

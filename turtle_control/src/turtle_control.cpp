@@ -123,6 +123,8 @@ private:
     js_msg.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
     js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
+    nubot.fkinematics(js_msg.position);
+    nubot.setWheelPos(js_msg.position);
     return js_msg;
   }
 
@@ -145,12 +147,13 @@ private:
   }
 
   std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
-    return std::vector<double> {left_encoder/encoder_ticks_per_rad, right_encoder*left_encoder/encoder_ticks_per_rad};
+    return std::vector<double> {left_encoder/encoder_ticks_per_rad, right_encoder/encoder_ticks_per_rad};
   }
 
   std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {
-    return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec - current_time.nanoseconds()/1e-9), 
-                                (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec - current_time.nanoseconds()/1e-9)
+    // RCLCPP_INFO(get_logger(), "delta t: %f", js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9);
+    return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9), 
+                                (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9)
     };
   }
 };
