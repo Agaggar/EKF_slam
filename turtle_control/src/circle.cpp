@@ -62,16 +62,19 @@ private:
   rclcpp::Service<turtle_control::srv::Reverse>::SharedPtr reverse_srv;
   rclcpp::Service<turtle_control::srv::Stop>::SharedPtr stop_srv;
   rclcpp::TimerBase::SharedPtr timer;
-  geometry_msgs::msg::Twist zero_twist;
-  geometry_msgs::msg::Twist circle_twist;
-  double radius, velocity;
+  geometry_msgs::msg::Twist zero_twist, circle_twist;
+  // geometry_msgs::msg::Twist circle_twist;
+  // double radius(0.0), velocity(0.0);
 
   /// \brief Timer callback
   void timer_callback()
   {
+    if (state == State::STOP) {
+      ;
+    }
     if (state == State::GO) {
-        circle_twist.linear.x = radius;
-        circle_twist.angular.z = velocity;
+        // circle_twist.linear.x = radius;
+        // circle_twist.angular.z = velocity;
         cmd_vel_pub->publish(circle_twist);
     }
     if (state == State::END) {
@@ -91,8 +94,8 @@ private:
     turtle_control::srv::Circle::Request::SharedPtr request,
     const turtle_control::srv::Circle::Response::SharedPtr)
   {
-    velocity = request->velocity;
-    radius = request->radius;
+    circle_twist.angular.z = request->velocity;
+    circle_twist.linear.x = request->radius;
     if (state != State::GO) {
         state = State::GO;
     }
@@ -111,7 +114,7 @@ private:
     else {
         RCLCPP_INFO(get_logger(), "reversing...");
     }
-    velocity = -1*velocity;
+    circle_twist.angular.z = -circle_twist.angular.z;
   }
 
   /// \brief Stop robot
