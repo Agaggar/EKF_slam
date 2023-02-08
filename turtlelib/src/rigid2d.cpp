@@ -319,12 +319,16 @@ namespace turtlelib {
         q.at(0) += dq.linearx;
         q.at(1) += dq.lineary;
         q.at(2) += dq.angular;
+        q.at(2) = turtlelib::normalize_angle(q.at(2));
     };
 
     Twist2D DiffDrive::velToTwist(const std::vector<double> phiprime) {
+        // std::vector<std::vector<double>> hstar {{-wheel_radius/2.0/wheel_track, wheel_radius/2.0/wheel_track}, 
+        //                                         {wheel_radius/2.0*cos(q.at(2)), wheel_radius/2.0*cos(q.at(2))}, 
+        //                                         {wheel_radius/2.0*sin(q.at(2)), wheel_radius/2.0*sin(q.at(2))}};
         std::vector<std::vector<double>> hstar {{-wheel_radius/2.0/wheel_track, wheel_radius/2.0/wheel_track}, 
-                                                {wheel_radius/2.0*cos(q.at(2)), wheel_radius/2.0*cos(q.at(2))}, 
-                                                {wheel_radius/2.0*sin(q.at(2)), wheel_radius/2.0*sin(q.at(2))}};
+                                                {wheel_radius/2.0, wheel_radius/2.0}, 
+                                                {0.0, 0.0}};
         Twist2D dq = Twist2D{hstar.at(0).at(0) * phiprime.at(0) + hstar.at(0).at(1) * phiprime.at(1),
                              hstar.at(1).at(0) * phiprime.at(0) + hstar.at(1).at(1) * phiprime.at(1),
                              hstar.at(2).at(0) * phiprime.at(0) + hstar.at(2).at(1) * phiprime.at(1)};
