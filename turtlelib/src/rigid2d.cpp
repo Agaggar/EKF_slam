@@ -315,7 +315,8 @@ namespace turtlelib {
         Twist2D Vb = velToTwist(std::vector<double>{phi_rprime, phi_lprime});
         Transform2D Tbbprime = integrate_twist(Vb);
         Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
-        Twist2D dq = Transform2D{Vb.angular}.adj().conv_diff_frame(dqb);
+        Transform2D adj_theta = Transform2D{Vb.angular}.adj();
+        Twist2D dq = adj_theta.conv_diff_frame(dqb);
         q.at(0) += dq.linearx;
         q.at(1) += dq.lineary;
         q.at(2) += dq.angular;
@@ -336,7 +337,7 @@ namespace turtlelib {
     }
 
     std::vector<double> DiffDrive::ikinematics(Twist2D twist0) {
-        std::vector<std::vector<double>> H {{-1.0*wheel_track/wheel_radius, 1.0, 0.0},
+        std::vector<std::vector<double>> H {{-wheel_track/wheel_radius, 1.0, 0.0},
                                             {wheel_track/wheel_radius, 1.0, 0.0}};
         std::vector<double> wheel_vel {H.at(0).at(0) * twist0.angular + H.at(0).at(1) * twist0.linearx + H.at(0).at(2) * twist0.lineary,
                                        H.at(1).at(0) * twist0.angular + H.at(1).at(1) * twist0.linearx + H.at(1).at(2) * twist0.lineary};
