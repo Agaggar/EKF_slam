@@ -243,7 +243,6 @@ TEST_CASE("Test a Few Transforms in a Row", "DiffDrive") { // Hughes, Katie
     REQUIRE(std::to_string(ws.at(0)) == std::to_string(-track*tw.angular/rad));
     REQUIRE(std::to_string(ws.at(1)) == std::to_string(track*tw.angular/rad)); //ikin is right
     dd.fkinematics(ws);
-    // pure rotation causes drift in x??
     REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(1.0, 1e-5));
     REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(0.0, 1e-5));
     REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.5*PI, 1e-5));
@@ -255,5 +254,29 @@ TEST_CASE("Test a Few Transforms in a Row", "DiffDrive") { // Hughes, Katie
     REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(1.0, 1e-5));
     REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(1.0, 1e-5));
     REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.5*PI, 1e-5));
+
+    // move 1 unit backward in x direction
+    tw = Twist2D{0.0, -1.0, 0.0};
+    ws = dd.ikinematics(tw);
+    dd.fkinematics(ws);
+    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(0.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(1.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.5*PI, 1e-5));
+
+    // then rotate -pi/2
+    tw = Twist2D{-0.5*PI, 0.0, 0.0};
+    ws = dd.ikinematics(tw);
+    dd.fkinematics(ws);
+    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(0.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(1.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.0, 1e-5));
+
+    // Drive backward one again. should go to y = 0
+    tw = Twist2D{0.0, -1.0, 0.0};
+    ws = dd.ikinematics(tw);
+    dd.fkinematics(ws);
+    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(0.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(0.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.0, 1e-5));
 }
 }
