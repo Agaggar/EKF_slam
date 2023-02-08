@@ -62,8 +62,13 @@ namespace turtlelib
         Transform2D integrate_twist(Twist2D twist0);
 
         /// \brief Compute forward kinematics
-        /// \param phi_new - new wheel positions
-        void fkinematics(const std::vector<double> phi_new);
+        /// \param phi_l_new - new wheel position left
+        /// \param phi_r_new - new wheel position left
+        void fkinematics(const double phi_l_new, const double phi_r_new);
+
+        /// \brief Compute forward kinematics
+        /// \param phi_prime - wheel velocities
+        void fkinematics(const std::vector<double> phi_prime);
 
         /// \brief convert control (velocities) to a body twist
         /// \param phiprime - wheel velocities (left, right) 
