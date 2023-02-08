@@ -235,6 +235,13 @@ TEST_CASE("Test a Few Transforms in a Row", "DiffDrive") { // Hughes, Katie
     // then rotate pi/2
     tw = Twist2D{0.5*PI, 0.0, 0.0};
     ws = dd.ikinematics(tw);
+    Transform2D Tbbprime = dd.integrate_twist(dd.velToTwist(ws));
+    REQUIRE(std::to_string(Tbbprime.rotation()) == std::to_string(PI/2.0));
+    REQUIRE(std::to_string(Tbbprime.translation().x) == std::to_string(0.0));
+    REQUIRE(std::to_string(Tbbprime.translation().y) == std::to_string(0.0));
+    
+    REQUIRE(std::to_string(ws.at(0)) == std::to_string(-track*tw.angular/rad));
+    REQUIRE(std::to_string(ws.at(1)) == std::to_string(track*tw.angular/rad)); //ikin is right
     dd.fkinematics(ws);
     // pure rotation causes drift in x??
     REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(1.0, 1e-5));
