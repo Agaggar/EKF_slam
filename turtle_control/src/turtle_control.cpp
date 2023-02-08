@@ -126,7 +126,7 @@ private:
     nubot.fkinematics(js_msg.position);
     // nubot.fkinematics(std::vector<double>{js_msg.position.at(0) - nubot.getWheelPos().at(0),
     //                                       js_msg.position.at(1) - nubot.getWheelPos().at(1)});
-    RCLCPP_INFO(get_logger(), "bluebot pos: %f, %f, %f", nubot.getCurrentConfig().at(0), nubot.getCurrentConfig().at(1), nubot.getCurrentConfig().at(2));
+    // RCLCPP_INFO(get_logger(), "bluebot pos: %f, %f, %f", nubot.getCurrentConfig().at(0), nubot.getCurrentConfig().at(1), nubot.getCurrentConfig().at(2));
     nubot.setWheelPos(js_msg.position);
   }
 
