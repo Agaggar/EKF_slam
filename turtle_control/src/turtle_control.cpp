@@ -117,15 +117,17 @@ private:
   }
 
   /// \brief sensor_data subscription callback
-  sensor_msgs::msg::JointState sd_callback(const nuturtlebot_msgs::msg::SensorData sd) {
+  void sd_callback(const nuturtlebot_msgs::msg::SensorData sd) {
     js_msg.header.stamp = get_clock()->now();
     js_msg.header.frame_id = "blue/base_footprint";
     js_msg.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
     js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
     nubot.fkinematics(js_msg.position);
+    // nubot.fkinematics(std::vector<double>{js_msg.position.at(0) - nubot.getWheelPos().at(0),
+    //                                       js_msg.position.at(1) - nubot.getWheelPos().at(1)});
+    RCLCPP_INFO(get_logger(), "bluebot pos: %f, %f, %f", nubot.getCurrentConfig().at(0), nubot.getCurrentConfig().at(1), nubot.getCurrentConfig().at(2));
     nubot.setWheelPos(js_msg.position);
-    return js_msg;
   }
 
   nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
@@ -134,20 +136,20 @@ private:
       cmd.left_velocity = int32_t (motor_cmd_max);  
     }
     else {
-      cmd.left_velocity = int32_t (wheel_vel.at(0) * motor_cmd_per_rad_sec);
+      cmd.left_velocity = int32_t (std::round(wheel_vel.at(0) * motor_cmd_per_rad_sec));
     }
     if ((wheel_vel.at(1) * motor_cmd_per_rad_sec) > motor_cmd_max) {
       cmd.right_velocity = int32_t (motor_cmd_max);  
     }
     else {
-      cmd.right_velocity = int32_t (wheel_vel.at(1) * motor_cmd_per_rad_sec);
+      cmd.right_velocity = int32_t (std::round(wheel_vel.at(1) * motor_cmd_per_rad_sec));
     }
     // cmd.right_velocity = int32_t (std::fmod(wheel_vel.at(1) * motor_cmd_per_rad_sec, motor_cmd_max));
     return cmd;
   }
 
   std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
-    return std::vector<double> {left_encoder/encoder_ticks_per_rad, right_encoder/encoder_ticks_per_rad};
+    return std::vector<double> {double(left_encoder)/encoder_ticks_per_rad, double(right_encoder)/encoder_ticks_per_rad};
   }
 
   std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {

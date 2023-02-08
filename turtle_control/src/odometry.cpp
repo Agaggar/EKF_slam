@@ -110,8 +110,11 @@ private:
 
   void js_callback(const sensor_msgs::msg::JointState js) {
     if ((js_msg.velocity.size() > 0)) {
+      RCLCPP_INFO(get_logger(), "blue delta_rad: %f", js.position.at(0) - js_msg.position.at(0));
       nubot.fkinematics(std::vector<double>{js.position.at(0) - js_msg.position.at(0),
                                             js.position.at(1) - js_msg.position.at(1)});
+    // RCLCPP_INFO(get_logger(), "bluebot pos: %f, %f, %f", nubot.getCurrentConfig().at(0), nubot.getCurrentConfig().at(1), nubot.getCurrentConfig().at(2));
+      // nubot.setWheelPos(js.position);
       // sd_received = true;
     }
     js_msg = js;

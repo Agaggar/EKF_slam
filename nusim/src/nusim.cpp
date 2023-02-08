@@ -190,6 +190,8 @@ private:
       init_x = x0;
       init_y = y0;
       init_z = z0;
+      sd.left_encoder = 0.0;
+      sd.right_encoder = 0.0;
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
@@ -223,13 +225,13 @@ private:
     sd.stamp.nanosec = get_clock()->now().nanoseconds() - sd.stamp.sec * 1e9;
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
-    redbot.fkinematics(std::vector<double>{left_new_pos, right_new_pos});
+    redbot.fkinematics(std::vector<double>{left_new_pos + redbot.getWheelPos().at(0), right_new_pos + redbot.getWheelPos().at(1)});
     x0 = redbot.getCurrentConfig().at(0);
     y0 = redbot.getCurrentConfig().at(1);
     theta0 = redbot.getCurrentConfig().at(2);
-    RCLCPP_INFO(get_logger(), "redbot pos: %f, %f, %f", redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), redbot.getCurrentConfig().at(2));
-    sd.left_encoder += floor(left_new_pos * encoder_ticks_per_rad);
-    sd.right_encoder += floor(right_new_pos * encoder_ticks_per_rad);
+    // RCLCPP_INFO(get_logger(), "redbot pos: %f, %f, %f", redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), redbot.getCurrentConfig().at(2));
+    sd.left_encoder += (left_new_pos * encoder_ticks_per_rad);
+    sd.right_encoder += (right_new_pos * encoder_ticks_per_rad);
   }
 
   /// \brief Reset timestep by listening to reset service
