@@ -36,21 +36,21 @@ A list of parameters in the launch file are as follow:
 ### Odom Output from Above Video
 header:
   stamp:
-    sec: 1675956490
-    nanosec: 828922108
+    sec: 1675970728
+    nanosec: 469376419
   frame_id: odom
 child_frame_id: blue/base_footprint
 pose:
   pose:
     position:
-      x: -0.1706329929386896
-      y: 1.489721926258149
+      x: -0.03405921363741696
+      y: 0.5003705671941315
       z: 0.0
     orientation:
-      x: 0.0
+      x: -0.0
       y: 0.0
-      z: -0.9946480890625745
-      w: 0.10332075746997196
+      z: 0.9958111282727505
+      w: -0.09143411184099538
   covariance:
   - 0.0
   - 0.0
@@ -135,4 +135,3 @@ twist:
   - 0.0
   - 0.0
   - 0.0
----
