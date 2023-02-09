@@ -129,8 +129,8 @@ std::istream & operator>>(std::istream & is, Transform2D & tf)
   double deg, transx, transy;
   is >> deg >> transx >> transy;
   tf = Transform2D(Vector2D{transx, transy}, deg2rad(deg));
-  std::cin.ignore(50, '\n');
-  // std::cin.clear();
+//   std::cin.ignore(50, '\n');
+  std::cin.clear();
   return is;
 }
 
@@ -152,8 +152,8 @@ std::istream & operator>>(std::istream & is, Vector2D & v)
     is.get();
   }
   is >> v.x >> v.y;
-  std::cin.ignore(50, '\n');
-  // std::cin.clear();
+//   std::cin.ignore(50, '\n');
+  std::cin.clear();
   return is;
 }
 
@@ -168,8 +168,8 @@ std::istream & operator>>(std::istream & is, Twist2D & t)
     is.get();
   }
   is >> t.angular >> t.linearx >> t.lineary;
-  std::cin.ignore(50, '\n');
-  // std::cin.clear();
+//   std::cin.ignore(50, '\n');
+  std::cin.clear();
   return is;
 }
 

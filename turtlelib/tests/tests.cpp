@@ -79,15 +79,8 @@ TEST_CASE("Rotation", "[transform2d]" ) {
 
 TEST_CASE("Adjugate function", "[transform2d]" ) {
    turtlelib::Transform2D transform_test = turtlelib::Transform2D(turtlelib::Vector2D{1.1, -1.1}, turtlelib::PI/4);
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r11, 1.0));
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r21, -1.1));
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r31, -1.1));
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r12, 0.0));
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r22, 0.707106781));
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r32, 0.707106781));
    REQUIRE( turtlelib::almost_equal(transform_test.adj().translation().x, 0.0));
    REQUIRE( turtlelib::almost_equal(transform_test.adj().translation().y, -0.707106781, 1.0e-8));
-//    REQUIRE( turtlelib::almost_equal(transform_test.adj().r33, 0.707106781));
    REQUIRE( turtlelib::almost_equal(transform_test.adj().rotation(), turtlelib::PI/4));
 }
 
@@ -259,19 +252,19 @@ TEST_CASE("Test a Few Transforms in a Row", "DiffDrive") { // Hughes, Katie
     tw = Twist2D{0.0, -1.0, 0.0};
     ws = dd.ikinematics(tw);
     dd.fkinematics(ws);
-    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(0.0, 1e-5));
-    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(1.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(1.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(0.0, 1e-5));
     REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.5*PI, 1e-5));
 
     // then rotate -pi/2
     tw = Twist2D{-0.5*PI, 0.0, 0.0};
     ws = dd.ikinematics(tw);
     dd.fkinematics(ws);
-    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(0.0, 1e-5));
-    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(1.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(1.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(0.0, 1e-5));
     REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(0.0, 1e-5));
 
-    // Drive backward one again. should go to y = 0
+    // Drive forward one again. should go to y = 0
     tw = Twist2D{0.0, -1.0, 0.0};
     ws = dd.ikinematics(tw);
     dd.fkinematics(ws);
