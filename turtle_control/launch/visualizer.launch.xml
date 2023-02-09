@@ -1,0 +1,6 @@
+<launch>
+
+    <node pkg="rviz2" exec="rviz2" name="rviz2" 
+        args="-d $(find-pkg-share turtle_control)/config/turtle_control.rviz" />
+
+</launch>
