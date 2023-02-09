@@ -95,7 +95,7 @@ private:
     const turtle_control::srv::Circle::Response::SharedPtr)
   {
     circle_twist.angular.z = request->velocity;
-    circle_twist.linear.x = request->radius;
+    circle_twist.linear.x = request->radius * request->velocity;
     if (state != State::GO) {
         state = State::GO;
     }

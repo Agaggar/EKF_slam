@@ -370,8 +370,8 @@ namespace turtlelib {
             throw std::logic_error("wheels slipped! since y velocity is not 0");
         }
         else {
-            return {-wheel_track/wheel_radius*twist0.angular + twist0.linearx/wheel_radius,
-                    wheel_track/wheel_radius*twist0.angular + twist0.linearx/wheel_radius};
+            return {(-wheel_track*twist0.angular + twist0.linearx)/wheel_radius,
+                    (wheel_track*twist0.angular + twist0.linearx)/wheel_radius};
         }
     };
 

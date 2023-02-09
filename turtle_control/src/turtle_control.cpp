@@ -103,7 +103,7 @@ private:
   void timer_callback()
   {
     current_time = get_clock()->now();
-    RCLCPP_INFO(get_logger(), "motor cmd, max and ticks: %d, %f", motor_cmd_max, motor_cmd_per_rad_sec);
+    RCLCPP_INFO(get_logger(), "vb: %f, %f", nubot.ikinematics(qdot).at(0), nubot.ikinematics(qdot).at(1));
     wheel_cmd_pub->publish(conv_vel_to_tick(nubot.ikinematics(qdot)));
     js_pub->publish(js_msg);
   }
@@ -132,21 +132,21 @@ private:
 
   nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
     nuturtlebot_msgs::msg::WheelCommands cmd;
+    // RCLCPP_INFO(get_logger(), "motor cmd: %f, %f", wheel_vel.at(0) * motor_cmd_per_rad_sec, wheel_vel.at(1) * motor_cmd_per_rad_sec);
     cmd.left_velocity = int32_t (std::round(wheel_vel.at(0) * motor_cmd_per_rad_sec));
     cmd.right_velocity = int32_t (std::round(wheel_vel.at(1) * motor_cmd_per_rad_sec));
-    // if ((wheel_vel.at(0) * motor_cmd_per_rad_sec) > motor_cmd_max) {
-    //   cmd.left_velocity = int32_t (motor_cmd_max);  
-    // }
-    // else {
-    //   cmd.left_velocity = int32_t (std::round(wheel_vel.at(0) * motor_cmd_per_rad_sec));
-    // }
-    // if ((wheel_vel.at(1) * motor_cmd_per_rad_sec) > motor_cmd_max) {
-    //   cmd.right_velocity = int32_t (motor_cmd_max);  
-    // }
-    // else {
-    //   cmd.right_velocity = int32_t (std::round(wheel_vel.at(1) * motor_cmd_per_rad_sec));
-    // }
-    // cmd.right_velocity = int32_t (std::fmod(wheel_vel.at(1) * motor_cmd_per_rad_sec, motor_cmd_max));
+    if (cmd.left_velocity > motor_cmd_max) {
+      cmd.left_velocity = int32_t (motor_cmd_max);  
+    }
+    if (cmd.right_velocity > motor_cmd_max) {
+      cmd.right_velocity = int32_t (motor_cmd_max);  
+    }
+    if (cmd.left_velocity < -motor_cmd_max) {
+      cmd.left_velocity = int32_t (-motor_cmd_max);  
+    }
+    if (cmd.right_velocity < -motor_cmd_max) {
+      cmd.right_velocity = int32_t (-motor_cmd_max);  
+    }
     return cmd;
   }
 
