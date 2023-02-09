@@ -107,6 +107,7 @@ private:
       RCLCPP_INFO(get_logger(), "reversing...");
     }
     circle_twist.angular.z = -circle_twist.angular.z;
+    circle_twist.linear.x = -circle_twist.linear.x;
   }
 
   /// \brief Stop robot
