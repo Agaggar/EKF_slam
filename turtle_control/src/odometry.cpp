@@ -7,7 +7,7 @@
 ///     wheel_left (string): The name of the left wheel joint
 ///     wheel_right (string): The name of the right wheel joint
 /// PUBLISHES:
-///     TODO
+///     odom (nav_msgs/msg/Odometry): odometry message
 /// SUBSCRIBES:
 ///     joint_states (sensor_msgs/JointState): update internal odometry
 /// SERVERS:
@@ -99,6 +99,8 @@ private:
     odom_pub->publish(compute_odom());
   }
 
+  /// \brief callback function for /joint_states subscription  
+  /// \param js - JointState message received 
   void js_callback(const sensor_msgs::msg::JointState js)
   {
     if ((js_msg.velocity.size() > 0)) {
