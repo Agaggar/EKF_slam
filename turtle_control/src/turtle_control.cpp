@@ -12,8 +12,8 @@
 ///     wheel_cmd (nuturtlebot_msgs/WheelCommands): make turtlebot3 follow specified twist
 ///     joint_states (sensor_msgs/JointState): provide angle (rad) and vel (rad/sec)
 /// SUBSCRIBES:
-///     cmd_vel (geometry_msgs/Twist)
-///     sensor_data (nuturtlebot_msgs/SensorData)
+///     cmd_vel (geometry_msgs/Twist): receives cmd_vel data
+///     sensor_data (nuturtlebot_msgs/SensorData): receives sensor_data
 /// SERVERS:
 ///     none
 /// CLIENTS:
@@ -45,11 +45,6 @@ public:
     collision_radius(0.11),
     nubot()
   {
-    // rcl_interfaces::msg::ParameterDescriptor wheel_radius_param_desc;
-    // wheel_radius_param_desc.name = "wheel_radius";
-    // wheel_radius_param_desc.type = 3;         // rate is a double
-    // wheel_radius_param_desc.description = "simulation refresh rate (hz)";
-    // // rate defaults to 200.0
     declare_parameter("wheel_radius", rclcpp::ParameterValue(-1.0));
     declare_parameter("track_width", rclcpp::ParameterValue(-1.0));
     declare_parameter("motor_cmd_max", rclcpp::ParameterValue(-1));
@@ -99,7 +94,7 @@ private:
   sensor_msgs::msg::JointState js_msg;
   rclcpp::Time current_time{get_clock()->now()};
 
-  /// \brief Timer callback
+  /// \brief Timer callback - publishes wheel_cmd and joint_states
   void timer_callback()
   {
     current_time = get_clock()->now();
@@ -109,14 +104,15 @@ private:
   }
 
   /// \brief cmd_vel subscription callback assigns 2D velocity values to Twist2D qdot
+  /// \param twist - cmd_vel message received
   void cmd_vel_callback(const geometry_msgs::msg::Twist &twist) {
-    // RCLCPP_INFO(get_logger(), "updating qdot twist, %f, %f, %f", twist.angular.z, twist.linear.x, twist.linear.y);
     qdot.angular = twist.angular.z;
     qdot.linearx = twist.linear.x;
     qdot.lineary = twist.linear.y;
   }
 
   /// \brief sensor_data subscription callback
+  /// \param sd - received sensor data
   void sd_callback(const nuturtlebot_msgs::msg::SensorData sd) {
     js_msg.header.stamp = get_clock()->now();
     js_msg.header.frame_id = "blue/base_footprint";
@@ -124,15 +120,14 @@ private:
     js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
     nubot.fkinematics(js_msg.position);
-    // nubot.fkinematics(std::vector<double>{js_msg.position.at(0) - nubot.getWheelPos().at(0),
-    //                                       js_msg.position.at(1) - nubot.getWheelPos().at(1)});
-    // RCLCPP_INFO(get_logger(), "bluebot pos: %f, %f, %f", nubot.getCurrentConfig().at(0), nubot.getCurrentConfig().at(1), nubot.getCurrentConfig().at(2));
     nubot.setWheelPos(js_msg.position);
   }
 
+  /// \brief helper function to convert velocity (from inv kin) to wheel ticks
+  /// \param wheel_vel - left and right wheel velocities to convert to ticks
+  /// \return message in WheelCommands
   nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
     nuturtlebot_msgs::msg::WheelCommands cmd;
-    // RCLCPP_INFO(get_logger(), "motor cmd: %f, %f", wheel_vel.at(0) * motor_cmd_per_rad_sec, wheel_vel.at(1) * motor_cmd_per_rad_sec);
     cmd.left_velocity = int32_t (std::round(wheel_vel.at(0) * motor_cmd_per_rad_sec));
     cmd.right_velocity = int32_t (std::round(wheel_vel.at(1) * motor_cmd_per_rad_sec));
     if (cmd.left_velocity > motor_cmd_max) {
@@ -150,12 +145,19 @@ private:
     return cmd;
   }
 
+  /// \brief helper function to convert encoder data to radians  
+  /// \param left_encoder - encoder ticks, left wheel  
+  /// \param right_encoder - encoder ticks, right wheel
+  /// \return radian values for each wheel 
   std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
     return std::vector<double> {double(left_encoder)/encoder_ticks_per_rad, double(right_encoder)/encoder_ticks_per_rad};
   }
 
+  /// \brief helper function to compute velocity based on time difference
+  /// \param current - current position, as read by joint states
+  /// \param prev - prev position, as read by bot before 
+  /// \return 
   std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {
-    // RCLCPP_INFO(get_logger(), "delta t: %f", js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9);
     return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9), 
                                 (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9)
     };
