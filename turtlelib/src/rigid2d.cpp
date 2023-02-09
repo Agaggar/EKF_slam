@@ -311,8 +311,6 @@ Transform2D DiffDrive::integrate_twist(Twist2D twist0)
 
 void DiffDrive::fkinematics(const double phi_l_new, const double phi_r_new)
 {
-  // double phi_lprime = phi_l_new - phi.at(0);
-  // double phi_rprime = phi_r_new - phi.at(1);
   std::vector<std::vector<double>> hstar {{-wheel_radius / 2.0 / wheel_track,
     wheel_radius / 2.0 / wheel_track},
     {wheel_radius / 2.0 * cos(q.at(2)), wheel_radius / 2.0 * cos(q.at(2))},
