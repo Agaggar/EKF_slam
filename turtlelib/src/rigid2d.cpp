@@ -6,14 +6,10 @@
 
 namespace turtlelib {
     Vector2D Vector2D::normalize() {
-        // Vector2D normalize = *this;
         double mag = sqrt(pow(x,2) + pow(y, 2));
         this->x/=mag;
         this->y/=mag;
         return *this;
-        // normalize.x = normalize.x/mag;
-        // normalize.y = normalize.y/mag;
-        // return normalize;
     };
 
     Transform2D::Transform2D() {};
@@ -21,10 +17,7 @@ namespace turtlelib {
     Transform2D::Transform2D(const Vector2D& trans): 
         r31(trans.x),
         r32(trans.y)
-    {
-        // r31 = trans.x;
-        // r32 = trans.y;
-    };
+    {};
 
     Transform2D::Transform2D(double radians):
         r11(cos(radians)),
@@ -32,13 +25,7 @@ namespace turtlelib {
         r21(sin(radians)),
         r22(cos(radians)),
         rot(radians)
-    {
-        // r11 = cos(radians);
-        // r12 = -1*sin(radians);
-        // r21 = sin(radians);
-        // r22 = cos(radians);
-        // rot = radians;
-    };
+    {};
 
     Transform2D::Transform2D(const Vector2D& trans, double radians):
         r11(cos(radians)),
@@ -48,15 +35,7 @@ namespace turtlelib {
         r22(cos(radians)),
         r23(trans.y),
         rot(radians)
-    {
-        // r11 = cos(radians);
-        // r12 = -1*sin(radians);
-        // r21 = sin(radians);
-        // r22 = cos(radians);
-        // r13 = trans.x;
-        // r23 = trans.y;
-        // rot = radians;
-    };
+    {};
 
     Transform2D::Transform2D(const Twist2D& twist):
         r11(cos(twist.angular)),
@@ -66,20 +45,9 @@ namespace turtlelib {
         r22(cos(twist.angular)),
         r23(twist.lineary),
         rot(twist.angular)
-    {
-        // r11 = cos(twist.angular);
-        // r12 = -1*sin(twist.angular);
-        // r21 = sin(twist.angular);
-        // r22 = cos(twist.angular);
-        // r13 = twist.linearx;
-        // r23 = twist.lineary;
-        // rot = twist.angular;
-    };
+    {};
 
     Vector2D Transform2D::operator()(const Vector2D& v) const {
-        // Vector2D tran_vec;
-        // tran_vec.x = r11 * v.x + r12 * v.y + r13;
-        // tran_vec.y = r21 * v.x + r22 * v.y + r23;
         return Vector2D{r11 * v.x + r12 * v.y + r13, r21 * v.x + r22 * v.y + r23};
     };
 
@@ -110,9 +78,6 @@ namespace turtlelib {
     };
 
     Vector2D Transform2D::translation() const {
-        // Vector2D tran_trans;
-        // tran_trans.x = r13;
-        // tran_trans.y = r23;
         return Vector2D{r13, r23};
     };
 
@@ -181,7 +146,6 @@ namespace turtlelib {
     };
 
     std::istream & operator>>(std::istream & is, Twist2D & t) {
-        // char c1 = is.peek();
         if (is.peek() == '[') {
             is.get();
         }
