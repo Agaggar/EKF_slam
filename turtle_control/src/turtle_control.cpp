@@ -91,7 +91,7 @@ private:
   rclcpp::Subscription<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_sub;
   rclcpp::TimerBase::SharedPtr timer;
   turtlelib::Twist2D qdot{0.0, 0.0, 0.0};
-  sensor_msgs::msg::JointState js_msg;
+  sensor_msgs::msg::JointState js_msg, js_prev;
   rclcpp::Time current_time{get_clock()->now()};
 
   /// \brief Timer callback - publishes wheel_cmd and joint_states
@@ -120,6 +120,7 @@ private:
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
     nubot.fkinematics(js_msg.position);
     nubot.setWheelPos(js_msg.position);
+    js_prev = js_msg;
   }
 
   /// \brief helper function to convert velocity (from inv kin) to wheel ticks
@@ -158,7 +159,7 @@ private:
   /// \return 
   std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {
     return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9), 
-                                (current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9)
+                                (current.at(1) - prev.at(1))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9)
     };
   }
 };
