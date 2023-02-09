@@ -142,7 +142,10 @@ public:
       "~/teleport",
       std::bind(&Nusim::teleport, this, std::placeholders::_1, std::placeholders::_2));
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
-    wheel_cmd_sub = create_subscription<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this, std::placeholders::_1));
+    wheel_cmd_sub = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+      "/wheel_cmd", 10, std::bind(
+        &Nusim::wheel_cmd_callback, this,
+        std::placeholders::_1));
     sd_pub = create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
   }
 
@@ -214,18 +217,22 @@ private:
   }
 
   /// \brief Wheel_cmd subscription
-  void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd) {
+  void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd)
+  {
     wheel_velocities.at(0) = cmd.left_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
     wheel_velocities.at(1) = cmd.right_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
   }
 
   /// \brief updating sensor data
-  void update_sd() {
-    sd.stamp.sec = floor(get_clock()->now().nanoseconds()*1e-9);
+  void update_sd()
+  {
+    sd.stamp.sec = floor(get_clock()->now().nanoseconds() * 1e-9);
     sd.stamp.nanosec = get_clock()->now().nanoseconds() - sd.stamp.sec * 1e9;
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
-    redbot.fkinematics(std::vector<double>{left_new_pos + redbot.getWheelPos().at(0), right_new_pos + redbot.getWheelPos().at(1)});
+    redbot.fkinematics(
+      std::vector<double>{left_new_pos + redbot.getWheelPos().at(
+          0), right_new_pos + redbot.getWheelPos().at(1)});
     x0 = redbot.getCurrentConfig().at(0);
     y0 = redbot.getCurrentConfig().at(1);
     theta0 = redbot.getCurrentConfig().at(2);
@@ -262,7 +269,8 @@ private:
     theta0 = request->theta;
   }
 
-  void create_walls() {
+  void create_walls()
+  {
     walls_x.header.frame_id = "nusim/world";
     walls_x.header.stamp = marker_time;
     walls_x.type = 6;
@@ -276,14 +284,14 @@ private:
     std::vector<geometry_msgs::msg::Point> points;
     points.push_back(
       geometry_msgs::build<geometry_msgs::msg::Point>().
-      x(0.0).y(y_length/2.0 + wall_thickness/2.0).z(walls_x.scale.z/2.0));
+      x(0.0).y(y_length / 2.0 + wall_thickness / 2.0).z(walls_x.scale.z / 2.0));
     points.push_back(
       geometry_msgs::build<geometry_msgs::msg::Point>().
-      x(0.0).y(-y_length/2.0 - wall_thickness/2.0).z(walls_x.scale.z/2.0));
+      x(0.0).y(-y_length / 2.0 - wall_thickness / 2.0).z(walls_x.scale.z / 2.0));
     marker_id += 1;
     walls_x.points = points;
-    
-    
+
+
     points.pop_back();
     points.pop_back(); // empty points to use for walls_y
     walls_y.header.frame_id = "nusim/world";
@@ -298,10 +306,10 @@ private:
     walls_y.color.a = 1.0;
     points.push_back(
       geometry_msgs::build<geometry_msgs::msg::Point>().
-      x(x_length/2.0 + wall_thickness/2.0).y(0.0).z(walls_y.scale.z/2.0));
+      x(x_length / 2.0 + wall_thickness / 2.0).y(0.0).z(walls_y.scale.z / 2.0));
     points.push_back(
       geometry_msgs::build<geometry_msgs::msg::Point>().
-      x(-x_length/2.0 - wall_thickness/2.0).y(0.0).z(walls_y.scale.z/2.0));
+      x(-x_length / 2.0 - wall_thickness / 2.0).y(0.0).z(walls_y.scale.z / 2.0));
     marker_id += 1;
     walls_y.points = points;
   }

@@ -57,15 +57,16 @@ public:
     }
     tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     odom_pub = create_publisher<nav_msgs::msg::Odometry>("/odom", 10);
-    js_sub = create_subscription<sensor_msgs::msg::JointState>("/blue/joint_states", 
+    js_sub = create_subscription<sensor_msgs::msg::JointState>(
+      "/blue/joint_states",
       10, std::bind(&Odometry::js_callback, this, std::placeholders::_1));
     initial_pose_srv = create_service<turtle_control::srv::Teleport>(
       "/initial_pose",
       std::bind(&Odometry::ip_srv_callback, this, std::placeholders::_1, std::placeholders::_2));
     timer =
-    create_wall_timer(
-        std::chrono::milliseconds(int(1.0 / 200.0 * 1000)),
-        std::bind(&Odometry::timer_callback, this)); // timer at 200 Hz
+      create_wall_timer(
+      std::chrono::milliseconds(int(1.0 / 200.0 * 1000)),
+      std::bind(&Odometry::timer_callback, this));   // timer at 200 Hz
   }
 
 private:
@@ -98,18 +99,22 @@ private:
     odom_pub->publish(compute_odom());
   }
 
-  void js_callback(const sensor_msgs::msg::JointState js) {
+  void js_callback(const sensor_msgs::msg::JointState js)
+  {
     if ((js_msg.velocity.size() > 0)) {
-      nubot.fkinematics(std::vector<double>{js.position.at(0) - js_msg.position.at(0),
-                                            js.position.at(1) - js_msg.position.at(1)});
+      nubot.fkinematics(
+        std::vector<double>{js.position.at(0) - js_msg.position.at(0),
+          js.position.at(1) - js_msg.position.at(1)});
     }
     js_msg = js;
   }
 
-  /// \brief initial_pose service callback 
-  /// \param request - turtle_control teleport type  
-  void ip_srv_callback(turtle_control::srv::Teleport::Request::SharedPtr request,
-                       turtle_control::srv::Teleport::Response::SharedPtr) {
+  /// \brief initial_pose service callback
+  /// \param request - turtle_control teleport type
+  void ip_srv_callback(
+    turtle_control::srv::Teleport::Request::SharedPtr request,
+    turtle_control::srv::Teleport::Response::SharedPtr)
+  {
     RCLCPP_INFO(get_logger(), "Initial pose service...");
     nubot.setCurrentConfig(std::vector<double>{request->x, request->y, request->theta});
     config.at(0) = request->x;
@@ -119,7 +124,8 @@ private:
 
   /// \brief helper function to compute and return an odometry message
   /// \return odometry message
-  nav_msgs::msg::Odometry compute_odom() {
+  nav_msgs::msg::Odometry compute_odom()
+  {
     nav_msgs::msg::Odometry odom_msg = nav_msgs::msg::Odometry();
     odom_msg.header.stamp = get_clock()->now();
     odom_msg.header.frame_id = odom_id;

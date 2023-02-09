@@ -68,16 +68,15 @@ private:
   void timer_callback()
   {
     if (state == State::STOP) {
-      ;
     }
     if (state == State::GO) {
-        cmd_vel_pub->publish(circle_twist);
+      cmd_vel_pub->publish(circle_twist);
     }
     if (state == State::END) {
-        zero_twist.linear.x = 0.0;
-        zero_twist.angular.z = 0.0;
-        cmd_vel_pub->publish(zero_twist);
-        state = State::STOP;
+      zero_twist.linear.x = 0.0;
+      zero_twist.angular.z = 0.0;
+      cmd_vel_pub->publish(zero_twist);
+      state = State::STOP;
     }
   }
 
@@ -91,7 +90,7 @@ private:
     circle_twist.angular.z = request->velocity;
     circle_twist.linear.x = request->radius * request->velocity;
     if (state != State::GO) {
-        state = State::GO;
+      state = State::GO;
     }
   }
 
@@ -103,10 +102,9 @@ private:
     const turtle_control::srv::Reverse::Response::SharedPtr)
   {
     if (state != State::GO) {
-        RCLCPP_INFO(get_logger(), "robot is not moving!");
-    }
-    else {
-        RCLCPP_INFO(get_logger(), "reversing...");
+      RCLCPP_INFO(get_logger(), "robot is not moving!");
+    } else {
+      RCLCPP_INFO(get_logger(), "reversing...");
     }
     circle_twist.angular.z = -circle_twist.angular.z;
   }
@@ -121,7 +119,7 @@ private:
     state = State::END;
   }
 };
-  
+
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
