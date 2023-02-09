@@ -63,8 +63,6 @@ private:
   rclcpp::Service<turtle_control::srv::Stop>::SharedPtr stop_srv;
   rclcpp::TimerBase::SharedPtr timer;
   geometry_msgs::msg::Twist zero_twist, circle_twist;
-  // geometry_msgs::msg::Twist circle_twist;
-  // double radius(0.0), velocity(0.0);
 
   /// \brief Timer callback
   void timer_callback()
@@ -73,8 +71,6 @@ private:
       ;
     }
     if (state == State::GO) {
-        // circle_twist.linear.x = radius;
-        // circle_twist.angular.z = velocity;
         cmd_vel_pub->publish(circle_twist);
     }
     if (state == State::END) {
@@ -83,8 +79,6 @@ private:
         cmd_vel_pub->publish(zero_twist);
         state = State::STOP;
     }
-    // current_time = get_clock()->now();
-    // RCLCPP_INFO(get_logger(), "node works");
   }
 
   /// \brief move the robot in a circle
