@@ -260,6 +260,10 @@ namespace turtlelib
         /// \return the angular displacement, in radians
         double rotation() const;
 
+        /// \brief set rotation of transform
+        /// \param rot - new rotation
+        void setRotation(double rot);
+
         /// \brief get the adjoint for this transformation
         /// \return 2D adjoint matrix
         Transform2D adj() const;
