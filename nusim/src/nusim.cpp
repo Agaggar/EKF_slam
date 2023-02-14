@@ -56,7 +56,8 @@ public:
     obs_x(std::vector<double> {0.0}),
     obs_y(std::vector<double> {0.0}),
     x_length(2.5),
-    y_length(2.5)
+    y_length(2.5),
+    draw_only(true)
   {
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
     rate_param_desc.name = "rate";
@@ -129,6 +130,9 @@ public:
     declare_parameter("y_length", rclcpp::ParameterValue(y_length));
     get_parameter("y_length", y_length);
 
+    declare_parameter("draw_only", rclcpp::ParameterValue(draw_only));
+    get_parameter("draw_only", draw_only);
+
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     timer_ =
@@ -155,6 +159,7 @@ private:
   std::vector<double> obs_x;
   std::vector<double> obs_y;
   double x_length, y_length;
+  bool draw_only;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -198,18 +203,20 @@ private:
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
-    t.header.stamp = get_clock()->now();
-    t.header.frame_id = "nusim/world";
-    t.child_frame_id = "red/base_footprint";
-    t.transform.translation.x = x0;
-    t.transform.translation.y = y0;
-    t.transform.translation.z = z0;
-    q.setRPY(0, 0, theta0);
-    t.transform.rotation.x = q.x();
-    t.transform.rotation.y = q.y();
-    t.transform.rotation.z = q.z();
-    t.transform.rotation.w = q.w();
-    tf2_rostf_broadcaster_->sendTransform(t);
+    if (draw_only) {
+      t.header.stamp = get_clock()->now();
+      t.header.frame_id = "nusim/world";
+      t.child_frame_id = "red/base_footprint";
+      t.transform.translation.x = x0;
+      t.transform.translation.y = y0;
+      t.transform.translation.z = z0;
+      q.setRPY(0, 0, theta0);
+      t.transform.rotation.x = q.x();
+      t.transform.rotation.y = q.y();
+      t.transform.rotation.z = q.z();
+      t.transform.rotation.w = q.w();
+      tf2_rostf_broadcaster_->sendTransform(t);
+    }
     timestep += 1;
     marker_pub_->publish(all_cyl);
     update_sd();
