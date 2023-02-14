@@ -123,7 +123,7 @@ private:
     js_prev = js_msg;
   }
 
-  /// \brief helper function to convert velocity (from inv kin) to wheel ticks
+  /// \brief helper function to convert velocity (from inv kin) to wheel ticks #TODO: check to make sure it works for negative commands too
   /// \param wheel_vel - left and right wheel velocities to convert to ticks
   /// \return message in WheelCommands
   nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
