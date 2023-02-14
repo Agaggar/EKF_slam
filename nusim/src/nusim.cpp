@@ -57,6 +57,8 @@ public:
     obs_y(std::vector<double> {0.0}),
     x_length(2.5),
     y_length(2.5),
+    input_noise(0.0),
+    slip_fraction(0.0),
     draw_only(true)
   {
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
@@ -123,7 +125,6 @@ public:
     declare_parameter("obstacles.y", rclcpp::ParameterValue(obs_y), obs_y_param_desc);
     get_parameter("obstacles.y", obs_y);
 
-
     declare_parameter("x_length", rclcpp::ParameterValue(x_length));
     get_parameter("x_length", x_length);
 
@@ -132,6 +133,12 @@ public:
 
     declare_parameter("draw_only", rclcpp::ParameterValue(draw_only));
     get_parameter("draw_only", draw_only);
+
+    declare_parameter("input_noise", rclcpp::ParameterValue(input_noise));
+    get_parameter("input_noise", input_noise);
+
+    declare_parameter("slip_fraction", rclcpp::ParameterValue(slip_fraction));
+    get_parameter("slip_fraction", slip_fraction);
 
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
@@ -158,7 +165,7 @@ private:
   double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x;
   std::vector<double> obs_y;
-  double x_length, y_length;
+  double x_length, y_length, input_noise, slip_fraction;
   bool draw_only;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_;
@@ -226,8 +233,14 @@ private:
   /// \brief Wheel_cmd subscription
   void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd)
   {
+    // new stuff for task c.9
     wheel_velocities.at(0) = cmd.left_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
     wheel_velocities.at(1) = cmd.right_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
+    if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
+      // += zero-mean gaussian distribution with variance input_noise, NOT just += input_noise
+      wheel_velocities.at(0) += input_noise;
+      wheel_velocities.at(1) += input_noise;
+    }
   }
 
   /// \brief updating sensor data
@@ -235,6 +248,7 @@ private:
   {
     sd.stamp.sec = floor(get_clock()->now().nanoseconds() * 1e-9);
     sd.stamp.nanosec = get_clock()->now().nanoseconds() - sd.stamp.sec * 1e9;
+    // here is where we'd add the slip fraction randomness
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
     redbot.fkinematics(
