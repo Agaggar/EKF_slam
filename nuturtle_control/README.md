@@ -3,7 +3,7 @@
 ### Package Description
 This package is designed to send control signals to the "red" (real) and "blue" (odometry) robots.
 ### Launchfile descriptions
-`ros2 launch turtle_control start_robot.launch.xml` will launch the turtle_control and odometry nodes, along with rviz, circle, or teleop_twist_keyboard depending on the arguments. This launchfile also calls `load_one.launch.py` from the `nuturtle_description` package, and relies on `basic_world.yaml` and `diff_params.yaml` as well.
+`ros2 launch nuturtle_control start_robot.launch.xml` will launch the turtle_control and odometry nodes, along with rviz, circle, or teleop_twist_keyboard depending on the arguments. This launchfile also calls `load_one.launch.py` from the `nuturtle_description` package, and relies on `basic_world.yaml` and `diff_params.yaml` as well.
 
 ### Parameters
 Parameters can be changed in `basic_world.yaml` and `diff_params.yaml`. See the `nusim` and `nuturtle_description` packages respectively for more more information.
@@ -24,7 +24,7 @@ A list of parameters in the launch file are as follow:
 - `rsync -av --delete aarch64_install/ msr@<turtlebot_name>:/home/msr/install` to send to turtlebot
 - in a new terminal, `ssh -oSendEnv=ROS_DOMAIN_ID msr@<turtlebot_name>`
 - `source install/setup.bash` in ssh terminal
-- `ros2 launch start_robot.launch.xml cmd_src:='circle' robot:='localhost'` in ssh terminal
+- `ros2 launch nuturtle_control start_robot.launch.xml cmd_src:='circle' robot:='localhost'` in ssh terminal
 - `ros2 node list` in local computer terminal to ensure all nodes are running properly
     - it's most important that `/numsr_turtlebot` is running! If not, open a new ssh terminal and run `ros2 run numsr_turtlebot numsr_turtlebot`
 - `ros2 service call /initial_pose turtle_control/srv/Teleport '{x: 0.0, y: 0.0, theta: 0.0}'`: initialize to (0,0,0) when starting on localhost. run on local computer terminal
