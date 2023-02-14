@@ -1,4 +1,4 @@
-nusim:
+/**:
   ros__parameters:
     x0: 0.0 # m, robot
     y0: 0.0 # m, robot
