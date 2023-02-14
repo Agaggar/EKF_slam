@@ -23,7 +23,7 @@
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "geometry_msgs/msg/quaternion.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
-#include "turtle_control/srv/teleport.hpp"
+#include "nuturtle_control/srv/teleport.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "turtlelib/diff_drive.hpp"
@@ -60,7 +60,7 @@ public:
     js_sub = create_subscription<sensor_msgs::msg::JointState>(
       "/blue/joint_states",
       10, std::bind(&Odometry::js_callback, this, std::placeholders::_1));
-    initial_pose_srv = create_service<turtle_control::srv::Teleport>(
+    initial_pose_srv = create_service<nuturtle_control::srv::Teleport>(
       "/initial_pose",
       std::bind(&Odometry::ip_srv_callback, this, std::placeholders::_1, std::placeholders::_2));
     timer =
@@ -74,7 +74,7 @@ private:
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
-  rclcpp::Service<turtle_control::srv::Teleport>::SharedPtr initial_pose_srv;
+  rclcpp::Service<nuturtle_control::srv::Teleport>::SharedPtr initial_pose_srv;
   rclcpp::TimerBase::SharedPtr timer;
   turtlelib::DiffDrive nubot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
   sensor_msgs::msg::JointState js_msg;
@@ -112,10 +112,10 @@ private:
   }
 
   /// \brief initial_pose service callback
-  /// \param request - turtle_control teleport type
+  /// \param request - nuturtle_control teleport type
   void ip_srv_callback(
-    turtle_control::srv::Teleport::Request::SharedPtr request,
-    turtle_control::srv::Teleport::Response::SharedPtr)
+    nuturtle_control::srv::Teleport::Request::SharedPtr request,
+    nuturtle_control::srv::Teleport::Response::SharedPtr)
   {
     RCLCPP_INFO(get_logger(), "Initial pose service...");
     nubot.setCurrentConfig(std::vector<double>{request->x, request->y, request->theta});

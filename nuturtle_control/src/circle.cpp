@@ -19,9 +19,9 @@
 #include "std_srvs/srv/empty.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/vector3.hpp"
-#include "turtle_control/srv/circle.hpp"
-#include "turtle_control/srv/reverse.hpp"
-#include "turtle_control/srv/stop.hpp"
+#include "nuturtle_control/srv/circle.hpp"
+#include "nuturtle_control/srv/reverse.hpp"
+#include "nuturtle_control/srv/stop.hpp"
 
 using namespace std::chrono_literals;
 
@@ -39,13 +39,13 @@ public:
     declare_parameter("frequency", rclcpp::ParameterValue(frequency));
     get_parameter("frequency", frequency);
     cmd_vel_pub = create_publisher<geometry_msgs::msg::Twist>("/cmd_vel", 10);
-    circle_srv = create_service<turtle_control::srv::Circle>(
+    circle_srv = create_service<nuturtle_control::srv::Circle>(
       "~/circle",
       std::bind(&Circle::circle_callback, this, std::placeholders::_1, std::placeholders::_2));
-    reverse_srv = create_service<turtle_control::srv::Reverse>(
+    reverse_srv = create_service<nuturtle_control::srv::Reverse>(
       "~/reverse",
       std::bind(&Circle::reverse_callback, this, std::placeholders::_1, std::placeholders::_2));
-    stop_srv = create_service<turtle_control::srv::Stop>(
+    stop_srv = create_service<nuturtle_control::srv::Stop>(
       "~/stop",
       std::bind(&Circle::stop_callback, this, std::placeholders::_1, std::placeholders::_2));
     timer =
@@ -58,9 +58,9 @@ private:
   double frequency;
   State state;
   rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub;
-  rclcpp::Service<turtle_control::srv::Circle>::SharedPtr circle_srv;
-  rclcpp::Service<turtle_control::srv::Reverse>::SharedPtr reverse_srv;
-  rclcpp::Service<turtle_control::srv::Stop>::SharedPtr stop_srv;
+  rclcpp::Service<nuturtle_control::srv::Circle>::SharedPtr circle_srv;
+  rclcpp::Service<nuturtle_control::srv::Reverse>::SharedPtr reverse_srv;
+  rclcpp::Service<nuturtle_control::srv::Stop>::SharedPtr stop_srv;
   rclcpp::TimerBase::SharedPtr timer;
   geometry_msgs::msg::Twist zero_twist, circle_twist;
 
@@ -84,8 +84,8 @@ private:
   /// \param request - Circle.srv type, with double parameters radius and velocity
   /// \param response - Empty type
   void circle_callback(
-    turtle_control::srv::Circle::Request::SharedPtr request,
-    const turtle_control::srv::Circle::Response::SharedPtr)
+    nuturtle_control::srv::Circle::Request::SharedPtr request,
+    const nuturtle_control::srv::Circle::Response::SharedPtr)
   {
     circle_twist.angular.z = request->velocity;
     circle_twist.linear.x = request->radius * request->velocity;
@@ -98,8 +98,8 @@ private:
   /// \param request - Empty type
   /// \param response - Empty type
   void reverse_callback(
-    const turtle_control::srv::Reverse::Request::SharedPtr,
-    const turtle_control::srv::Reverse::Response::SharedPtr)
+    const nuturtle_control::srv::Reverse::Request::SharedPtr,
+    const nuturtle_control::srv::Reverse::Response::SharedPtr)
   {
     if (state != State::GO) {
       RCLCPP_INFO(get_logger(), "robot is not moving!");
@@ -114,8 +114,8 @@ private:
   /// \param request - Empty type
   /// \param response - Empty type
   void stop_callback(
-    const turtle_control::srv::Stop::Request::SharedPtr,
-    const turtle_control::srv::Stop::Response::SharedPtr)
+    const nuturtle_control::srv::Stop::Request::SharedPtr,
+    const nuturtle_control::srv::Stop::Response::SharedPtr)
   {
     state = State::END;
   }
