@@ -359,6 +359,8 @@ void DiffDrive::fkinematics(const std::vector<double> phiprime)
   q.at(0) += dq.linearx;
   q.at(1) += dq.lineary;
   q.at(2) += dq.angular;
+  phi.at(0) += phiprime.at(0);
+  phi.at(1) += phiprime.at(1);
   // q.at(2) = turtlelib::normalize_angle(q.at(2));
 }
 

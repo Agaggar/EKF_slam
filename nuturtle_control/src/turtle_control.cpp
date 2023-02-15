@@ -119,11 +119,10 @@ private:
     js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
     nubot.fkinematics(js_msg.position);
-    nubot.setWheelPos(js_msg.position);
     js_prev = js_msg;
   }
 
-  /// \brief helper function to convert velocity (from inv kin) to wheel ticks #TODO: check to make sure it works for negative commands too
+  /// \brief helper function to convert velocity (from inv kin) to wheel ticks
   /// \param wheel_vel - left and right wheel velocities to convert to ticks
   /// \return message in WheelCommands
   nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
