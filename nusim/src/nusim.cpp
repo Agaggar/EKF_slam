@@ -22,6 +22,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <random>
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
 #include "std_srvs/srv/empty.hpp"
@@ -189,6 +190,12 @@ private:
   double motor_cmd_per_rad_sec = 1.0 / 0.024;
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
+  std::normal_distribution<> gauss_dist = std::normal_distribution<>(0.0, sqrt(input_noise));
+  // std::random_device rd;
+  // std::mt19937 generator = std::mt19937(rd());
+  // // std::default_random_engine generator;
+  // std::normal_distribution<double> gauss_dist = std::normal_distribution<double>();
+  std::uniform_real_distribution<double> unif_dist = std::uniform_real_distribution<double>(-slip_fraction, slip_fraction);
 
   /// \brief Timer callback
   void timer_callback()
@@ -233,14 +240,8 @@ private:
   /// \brief Wheel_cmd subscription
   void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd)
   {
-    // new stuff for task c.9
     wheel_velocities.at(0) = cmd.left_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
     wheel_velocities.at(1) = cmd.right_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
-    if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
-      // += zero-mean gaussian distribution with variance input_noise, NOT just += input_noise
-      wheel_velocities.at(0) += input_noise;
-      wheel_velocities.at(1) += input_noise;
-    }
   }
 
   /// \brief updating sensor data
@@ -251,13 +252,21 @@ private:
     // here is where we'd add the slip fraction randomness
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
+    if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
+      left_new_pos = (wheel_velocities.at(0) + gauss_dist(get_random())) * (1.0 / rate);
+      right_new_pos = (wheel_velocities.at(1) + gauss_dist(get_random())) * (1.0 / rate);
+    }
+    std::vector<double> phi_current = redbot.getWheelPos();
     redbot.fkinematics(
-      std::vector<double>{left_new_pos + redbot.getWheelPos().at(
-          0), right_new_pos + redbot.getWheelPos().at(1)});
+      std::vector<double>{left_new_pos, right_new_pos});
     x0 = redbot.getCurrentConfig().at(0);
     y0 = redbot.getCurrentConfig().at(1);
     theta0 = redbot.getCurrentConfig().at(2);
-    // RCLCPP_INFO(get_logger(), "redbot pos: %f, %f, %f", redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), redbot.getCurrentConfig().at(2));
+    std::vector<double> phiprime_noise{
+      wheel_velocities.at(0) * (1 + unif_dist(get_random())) * (1.0/rate),
+      wheel_velocities.at(1) * (1 + unif_dist(get_random())) * (1.0/rate)
+    };
+    redbot.setWheelPos(std::vector<double>{phiprime_noise.at(0) + redbot.getWheelPos().at(0), phiprime_noise.at(1) + redbot.getWheelPos().at(1)});
     sd.left_encoder += (left_new_pos * encoder_ticks_per_rad);
     sd.right_encoder += (right_new_pos * encoder_ticks_per_rad);
   }
@@ -386,6 +395,17 @@ private:
       rclcpp::shutdown();
     }
   }
+
+  std::mt19937 & get_random() // source: Elwin, Matt
+  {
+    // static variables inside a function are created once and persist for the remainder of the program
+    static std::random_device rd{}; 
+    static std::mt19937 mt{rd()};
+    // we return a reference to the pseudo-random number genrator object. This is always the
+    // same object every time get_random is called
+    return mt;
+  }
+
 };
 
 int main(int argc, char * argv[])
