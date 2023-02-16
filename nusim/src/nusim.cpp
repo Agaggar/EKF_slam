@@ -60,6 +60,8 @@ public:
     y_length(2.5),
     input_noise(0.0),
     slip_fraction(0.0),
+    basic_sensor_variance(1.0),
+    max_range(1.0),
     draw_only(true)
   {
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
@@ -141,6 +143,12 @@ public:
     declare_parameter("slip_fraction", rclcpp::ParameterValue(slip_fraction));
     get_parameter("slip_fraction", slip_fraction);
 
+    declare_parameter("basic_sensor_variance", rclcpp::ParameterValue(basic_sensor_variance));
+    get_parameter("basic_sensor_variance", basic_sensor_variance);
+
+    declare_parameter("max_range", rclcpp::ParameterValue(max_range));
+    get_parameter("max_range", max_range);
+
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     timer_ =
@@ -159,6 +167,11 @@ public:
         &Nusim::wheel_cmd_callback, this,
         std::placeholders::_1));
     sd_pub = create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
+    five_hz_timer = 
+      create_wall_timer(
+      std::chrono::milliseconds(200),
+      std::bind(&Nusim::fake_sensor_timer, this));
+    fake_sensor_pub = create_publisher<visualization_msgs::msg::MarkerArray>("/fake_sensor", 10);
   }
 
 private:
@@ -166,12 +179,12 @@ private:
   double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x;
   std::vector<double> obs_y;
-  double x_length, y_length, input_noise, slip_fraction;
+  double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range;
   bool draw_only;
   std_msgs::msg::UInt64 ts;
-  rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_, fake_sensor_pub;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sd_pub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
@@ -180,7 +193,7 @@ private:
   geometry_msgs::msg::TransformStamped t;
   tf2::Quaternion q;
   int marker_id = 0;
-  visualization_msgs::msg::MarkerArray all_cyl;
+  visualization_msgs::msg::MarkerArray all_cyl, measured_cyl;
   rclcpp::Time marker_time;
   std::vector<double> wheel_velocities{0.0, 0.0};
   // double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
@@ -190,11 +203,12 @@ private:
   double motor_cmd_per_rad_sec = 1.0 / 0.024;
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
-  std::normal_distribution<> gauss_dist = std::normal_distribution<>(0.0, sqrt(input_noise));
+  std::normal_distribution<> gauss_dist_vel_noise = std::normal_distribution<>(0.0, sqrt(input_noise));
+  std::normal_distribution<> gauss_dist_sensor_noise = std::normal_distribution<>(0.0, sqrt(basic_sensor_variance));
   // std::random_device rd;
   // std::mt19937 generator = std::mt19937(rd());
   // // std::default_random_engine generator;
-  // std::normal_distribution<double> gauss_dist = std::normal_distribution<double>();
+  // std::normal_distribution<double> gauss_dist_vel_noise = std::normal_distribution<double>();
   std::uniform_real_distribution<double> unif_dist = std::uniform_real_distribution<double>(-slip_fraction, slip_fraction);
 
   /// \brief Timer callback
@@ -237,6 +251,29 @@ private:
     sd_pub->publish(sd);
   }
 
+  /// \brief timer callback at 5 hz for a fake sensor
+  void fake_sensor_timer() {
+    measured_cyl = all_cyl;
+    double relative_x = redbot.getCurrentConfig().at(0);
+    double relative_y = redbot.getCurrentConfig().at(1);
+    for (size_t loop = 0; loop < all_cyl.markers.size(); loop++) {
+      if (distance(relative_x, relative_y, all_cyl.markers[loop].pose.position.x, all_cyl.markers[loop].pose.position.y) > max_range) {
+        measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+      }
+      else {
+        relative_x = all_cyl.markers[loop].pose.position.x - relative_x;
+        relative_y = all_cyl.markers[loop].pose.position.y - relative_y;
+        measured_cyl.markers[loop].pose.position.x = relative_x + gauss_dist_sensor_noise(get_random());
+        measured_cyl.markers[loop].pose.position.y = relative_y + gauss_dist_sensor_noise(get_random());
+        measured_cyl.markers[loop].color.g = 172.0 / 256.0; // change color to yellow
+      }
+      if (loop >= (all_cyl.markers.size() -2)) {
+        measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+      }
+    }
+    fake_sensor_pub->publish(measured_cyl);
+  }
+
   /// \brief Wheel_cmd subscription
   void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands cmd)
   {
@@ -253,8 +290,8 @@ private:
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
     if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
-      left_new_pos = (wheel_velocities.at(0) + gauss_dist(get_random())) * (1.0 / rate);
-      right_new_pos = (wheel_velocities.at(1) + gauss_dist(get_random())) * (1.0 / rate);
+      left_new_pos = (wheel_velocities.at(0) + gauss_dist_vel_noise(get_random())) * (1.0 / rate);
+      right_new_pos = (wheel_velocities.at(1) + gauss_dist_vel_noise(get_random())) * (1.0 / rate);
     }
     std::vector<double> phi_current = redbot.getWheelPos();
     redbot.fkinematics(
@@ -386,6 +423,16 @@ private:
     }
   }
 
+  /// \brief helper function to check distance between points
+  /// \param origin_x - current x coordinate
+  /// \param origin_y - current y coordinate
+  /// \param point_x - target x coordinate
+  /// \param point_y - target y coordinate
+  /// \return distance
+  double distance(double origin_x, double origin_y, double point_x, double point_y) {
+    return sqrt(pow((origin_x - point_x), 2.0) + pow((origin_y - point_y), 2.0));
+  }
+
   /// \brief Make sure the length of x and y coordinates are the same
   void check_len()
   {
@@ -396,6 +443,8 @@ private:
     }
   }
 
+  /// \brief helper function to generate random variable
+  /// \return random object
   std::mt19937 & get_random() // source: Elwin, Matt
   {
     // static variables inside a function are created once and persist for the remainder of the program
