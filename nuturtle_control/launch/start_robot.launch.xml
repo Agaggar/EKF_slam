@@ -43,7 +43,7 @@
         </include>
         
         <node pkg="nusim" exec="nusim"
-            args="--ros-args --params-file $(find-pkg-share nusim)/config/basic_world.yaml">
+            args="--ros-args --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml">
             <remap from="/wheel_cmd" to="red/wheel_cmd"/>
             <remap from="/sensor_data" to="red/sensor_data"/>
         </node>
