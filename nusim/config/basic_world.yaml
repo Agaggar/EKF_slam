@@ -13,3 +13,5 @@
     draw_only: true # boolean to draw red robot or not
     input_noise: 1.0 # variance for input noise
     slip_fraction: 0.0 # how much robot slips when following a trajectory
+    basic_sensor_variance: 1.0 # variance for sensor
+    max_range: 1.0 # max range of sensor
