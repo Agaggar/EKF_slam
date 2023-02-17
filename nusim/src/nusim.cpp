@@ -38,6 +38,7 @@
 #include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "turtlelib/diff_drive.hpp"
 #include "builtin_interfaces/msg/time.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 
 using namespace std::chrono_literals;
 
@@ -62,8 +63,18 @@ public:
     slip_fraction(0.0),
     basic_sensor_variance(1.0),
     max_range(1.0),
+    motor_cmd_per_rad_sec(1.0 / 0.024),
+    encoder_ticks_per_rad(651.8986),
     collision_radius(0.11),
-    draw_only(true)
+    draw_only(true),
+    angle_min(0.0),
+    angle_max(6.2657318115234375),
+    angle_increment(0.01745329238474369),
+    time_increment(0.0005574136157520115),
+    scan_time(0.20066890120506287),
+    range_min(0.11999999731779099),
+    range_max(3.5),
+    lidar_noise(0.0001)
   {
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
     rate_param_desc.name = "rate";
@@ -147,14 +158,43 @@ public:
     declare_parameter("basic_sensor_variance", rclcpp::ParameterValue(basic_sensor_variance));
     get_parameter("basic_sensor_variance", basic_sensor_variance);
 
-    declare_parameter("max_range", rclcpp::ParameterValue(max_range));
-    get_parameter("max_range", max_range);
-
     declare_parameter("collision_radius", rclcpp::ParameterValue(collision_radius));
     get_parameter("collision_radius", collision_radius);
 
+    declare_parameter("encoder_ticks_per_rad", rclcpp::ParameterValue(encoder_ticks_per_rad));
+    get_parameter("encoder_ticks_per_rad", encoder_ticks_per_rad);
+
+    declare_parameter("motor_cmd_per_rad_sec", rclcpp::ParameterValue(motor_cmd_per_rad_sec));
+    get_parameter("motor_cmd_per_rad_sec", motor_cmd_per_rad_sec);
+
+    declare_parameter("angle_min", rclcpp::ParameterValue(angle_min));
+    get_parameter("angle_min", angle_min);
+
+    declare_parameter("angle_max", rclcpp::ParameterValue(angle_max));
+    get_parameter("angle_max", angle_max);
+
+    declare_parameter("angle_increment", rclcpp::ParameterValue(angle_increment));
+    get_parameter("angle_increment", angle_increment);
+
+    declare_parameter("time_increment", rclcpp::ParameterValue(time_increment));
+    get_parameter("time_increment", time_increment);
+
+    declare_parameter("scan_time", rclcpp::ParameterValue(scan_time));
+    get_parameter("scan_time", scan_time);
+
+    declare_parameter("range_min", rclcpp::ParameterValue(range_min));
+    get_parameter("range_min", range_min);
+
+    declare_parameter("range_max", rclcpp::ParameterValue(range_max));
+    get_parameter("range_max", range_max);
+
+    declare_parameter("lidar_noise", rclcpp::ParameterValue(lidar_noise));
+    get_parameter("lidar_noise", lidar_noise);
+
     gauss_dist_vel_noise = std::normal_distribution<>{0.0, sqrt(input_noise)};
-    gauss_dist_sensor_noise = std::normal_distribution<>{0.0, sqrt(basic_sensor_variance)};
+    gauss_dist_position_noise = std::normal_distribution<>{0.0, sqrt(basic_sensor_variance)};
+    gauss_dist_lidar_noise = std::normal_distribution<>{0.0, sqrt(lidar_noise)};
+    unif_dist = std::uniform_real_distribution<>{-slip_fraction, slip_fraction};
     collided = false;
 
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
@@ -187,8 +227,9 @@ private:
   double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x;
   std::vector<double> obs_y;
-  double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range, collision_radius;
+  double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range, collision_radius, encoder_ticks_per_rad, motor_cmd_per_rad_sec;
   bool draw_only, collided;
+  double angle_min, angle_max, angle_increment, time_increment, scan_time, range_min, range_max, lidar_noise;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -207,18 +248,13 @@ private:
   // double max_rot_vel = 2.84; // from turtlebot3 website, in rad/s
   turtlelib::DiffDrive redbot{0.0, 0.0, x0, y0, theta0};
   nuturtlebot_msgs::msg::SensorData sd = nuturtlebot_msgs::msg::SensorData();
-  double encoder_ticks_per_rad = 651.8986; // #TODO: can declare as parameter
-  double motor_cmd_per_rad_sec = 1.0 / 0.024;
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
   double tolerance = 0.01;
-  std::normal_distribution<> gauss_dist_vel_noise;
-  std::normal_distribution<> gauss_dist_sensor_noise;
-  // std::random_device rd;
-  // std::mt19937 generator = std::mt19937(rd());
-  // // std::default_random_engine generator;
-  // std::normal_distribution<double> gauss_dist_vel_noise = std::normal_distribution<double>();
-  std::uniform_real_distribution<double> unif_dist = std::uniform_real_distribution<double>(-slip_fraction, slip_fraction);
+  std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_position_noise, gauss_dist_lidar_noise;
+  std::uniform_real_distribution<> unif_dist;
+  double relative_x, relative_y, range_lidar;
+  sensor_msgs::msg::LaserScan fake_lidar;
 
   /// \brief Timer callback
   void timer_callback()
@@ -237,6 +273,16 @@ private:
       init_z = z0;
       sd.left_encoder = 0.0;
       sd.right_encoder = 0.0;
+
+      fake_lidar.header.frame_id = "base_scan";
+      fake_lidar.header.stamp = get_clock()->now();
+      fake_lidar.angle_min = angle_min;
+      fake_lidar.angle_max = angle_max;
+      fake_lidar.angle_increment = angle_increment;
+      fake_lidar.time_increment = time_increment;
+      fake_lidar.scan_time = scan_time;
+      fake_lidar.range_min = range_min;
+      fake_lidar.range_max = range_max;
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
@@ -262,25 +308,8 @@ private:
 
   /// \brief timer callback at 5 hz for a fake sensor
   void fake_sensor_timer() {
-    measured_cyl = all_cyl;
-    double relative_x = redbot.getCurrentConfig().at(0);
-    double relative_y = redbot.getCurrentConfig().at(1);
-    for (size_t loop = 0; loop < all_cyl.markers.size(); loop++) {
-      if (distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) > max_range) {
-        measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
-      }
-      else {
-        measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
-        relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
-        relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
-        measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_sensor_noise(get_random());
-        measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_sensor_noise(get_random());
-        measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
-      }
-      if (loop >= (all_cyl.markers.size() - 2)) {
-        measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
-      }
-    }
+    cylinders_as_measured();
+    simulate_lidar();
     fake_sensor_pub->publish(measured_cyl);
   }
 
@@ -289,6 +318,10 @@ private:
   {
     wheel_velocities.at(0) = cmd.left_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
     wheel_velocities.at(1) = cmd.right_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
+    if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
+      wheel_velocities.at(0) += gauss_dist_vel_noise(get_random());
+      wheel_velocities.at(1) += gauss_dist_vel_noise(get_random());
+    }
   }
 
   /// \brief updating sensor data
@@ -299,10 +332,6 @@ private:
     // here is where we'd add the slip fraction randomness
     double left_new_pos = wheel_velocities.at(0) * (1.0 / rate);
     double right_new_pos = wheel_velocities.at(1) * (1.0 / rate);
-    if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
-      left_new_pos = (wheel_velocities.at(0) + gauss_dist_vel_noise(get_random())) * (1.0 / rate);
-      right_new_pos = (wheel_velocities.at(1) + gauss_dist_vel_noise(get_random())) * (1.0 / rate);
-    }
     std::vector<double> phi_current = redbot.getWheelPos();
     redbot.fkinematics(
       std::vector<double>{left_new_pos, right_new_pos});
@@ -330,6 +359,35 @@ private:
     sd.right_encoder += (right_new_pos * encoder_ticks_per_rad);
   }
 
+  /// \brief helper function to generate measured cylinders
+  void cylinders_as_measured() {
+    measured_cyl = all_cyl;
+    relative_x = redbot.getCurrentConfig().at(0);
+    relative_y = redbot.getCurrentConfig().at(1);
+    for (size_t loop = 0; loop < all_cyl.markers.size(); loop++) {
+      if (distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) > max_range) {
+        measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+      }
+      else {
+        measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
+        relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
+        relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
+        measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_position_noise(get_random());
+        measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_position_noise(get_random());
+        measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
+      }
+      if (loop >= (all_cyl.markers.size() - 2)) {
+        measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+      }
+    }
+  }
+
+  /// \brief helper function to simulate lidar values
+  void simulate_lidar() {
+    range_lidar = gauss_dist_lidar_noise(get_random());
+
+  }
+
   /// \brief Reset timestep by listening to reset service
   void reset(
     const std_srvs::srv::Empty::Request::SharedPtr,
@@ -340,13 +398,9 @@ private:
     x0 = init_x;
     y0 = init_y;
     z0 = init_z;
-    // for (size_t loop = 0; loop < obs_x.size(); loop++) {
-    //   all_cyl.markers.pop_back();
-    // }
   }
 
   /// \brief Teleport robot based on teleport service
-  ///
   /// \param request - nusim::srv::Teleport type, contains x, y, and theta
   void teleport(
     nusim::srv::Teleport::Request::SharedPtr request,
@@ -404,7 +458,6 @@ private:
   }
 
   /// \brief Create a single cylinder and add it to a MarkerArray
-  ///
   /// \returns marker (cylinder)
   visualization_msgs::msg::Marker create_cylinder()
   {
