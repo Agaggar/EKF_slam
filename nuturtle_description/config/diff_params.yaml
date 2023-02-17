@@ -5,4 +5,12 @@
     motor_cmd_max: 265 # motor provided commands on range of [-max, max]
     motor_cmd_per_rad_sec: 41.6666666666667 # motor command tick in rad/s
     encoder_ticks_per_rad: 651.8986 # 2^12/(2*pi)
-    collision_radius: 0.11
+    collision_radius: 0.11 # m, the "radius size" a turtlebot would take
+    angle_min: 0.0 # lidar, minimum angle of measurement
+    angle_max: 6.2657318115234375  # lidar, maximum angle of measurement
+    angle_increment: 0.01745329238474369 # lidar, angular resolution
+    time_increment: 0.0005574136157520115 # lidar, time resolution
+    scan_time: 0.20066890120506287 # lidar, time between scans
+    range_min: 0.11999999731779099 # lidar, min range
+    range_max: 3.5 # lidar, max range
+    lidar_noise: 0.0001 # lidar, variance of reading
