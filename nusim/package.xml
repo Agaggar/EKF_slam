@@ -20,6 +20,8 @@
   <depend>tf2</depend>
   <depend>turtlelib</depend>
   <depend>nuturtlebot_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend>sensor_msgs</depend>
 
   <buildtool_depend>rosidl_default_generators</buildtool_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
