@@ -153,6 +153,10 @@ public:
     declare_parameter("collision_radius", rclcpp::ParameterValue(collision_radius));
     get_parameter("collision_radius", collision_radius);
 
+    gauss_dist_vel_noise = std::normal_distribution<>{0.0, sqrt(input_noise)};
+    gauss_dist_sensor_noise = std::normal_distribution<>{0.0, sqrt(basic_sensor_variance)};
+    collided = false;
+
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     timer_ =
@@ -184,7 +188,7 @@ private:
   std::vector<double> obs_x;
   std::vector<double> obs_y;
   double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range, collision_radius;
-  bool draw_only;
+  bool draw_only, collided;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -208,8 +212,8 @@ private:
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
   double tolerance = 0.01;
-  std::normal_distribution<> gauss_dist_vel_noise{0.0, sqrt(input_noise)};
-  std::normal_distribution<> gauss_dist_sensor_noise{0.0, sqrt(basic_sensor_variance)};
+  std::normal_distribution<> gauss_dist_vel_noise;
+  std::normal_distribution<> gauss_dist_sensor_noise;
   // std::random_device rd;
   // std::mt19937 generator = std::mt19937(rd());
   // // std::default_random_engine generator;
@@ -258,7 +262,6 @@ private:
 
   /// \brief timer callback at 5 hz for a fake sensor
   void fake_sensor_timer() {
-    RCLCPP_INFO(get_logger(), "sensor noise: %f, %f, %f, %f", basic_sensor_variance, sqrt(basic_sensor_variance), gauss_dist_sensor_noise.mean(), gauss_dist_sensor_noise.stddev());
     measured_cyl = all_cyl;
     double relative_x = redbot.getCurrentConfig().at(0);
     double relative_y = redbot.getCurrentConfig().at(1);
@@ -267,13 +270,14 @@ private:
         measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
       }
       else {
-        relative_x = all_cyl.markers.at(loop).pose.position.x - relative_x;
-        relative_y = all_cyl.markers.at(loop).pose.position.y - relative_y;
+        measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
+        relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
+        relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
         measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_sensor_noise(get_random());
         measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_sensor_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
       }
-      if (loop >= (all_cyl.markers.size() -2)) {
+      if (loop >= (all_cyl.markers.size() - 2)) {
         measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
       }
     }
@@ -302,17 +306,20 @@ private:
     std::vector<double> phi_current = redbot.getWheelPos();
     redbot.fkinematics(
       std::vector<double>{left_new_pos, right_new_pos});
+    collided = false;
+    // RCLCPP_INFO(get_logger(), "dist: %f, x, y: %f, %f", distance(x0, y0, measured_cyl.markers.at(0).pose.position.x, measured_cyl.markers.at(loop).pose.position.y), x0, y0);
     for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
-      if (distance(x0, y0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + tolerance)) {
-        RCLCPP_INFO(get_logger(), "collision detected!");
-        // theta0 = std::atan2((measured_cyl.markers.at(loop).pose.position.y - y0), (measured_cyl.markers.at(loop).pose.position.x - x0));
+      if (measured_cyl.markers.at(loop).action != 2 && 
+          (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + tolerance))) {
+        theta0 = std::atan2((measured_cyl.markers.at(loop).pose.position.y), (measured_cyl.markers.at(loop).pose.position.x));
         redbot.setCurrentConfig(std::vector<double>{x0, y0, theta0}); // robot doesn't move, but wheels still updated
+        collided = true;
       }
-      else {
-        x0 = redbot.getCurrentConfig().at(0);
-        y0 = redbot.getCurrentConfig().at(1);
-        theta0 = redbot.getCurrentConfig().at(2);
-      }
+    }
+    if (!collided) {
+      x0 = redbot.getCurrentConfig().at(0);
+      y0 = redbot.getCurrentConfig().at(1);
+      theta0 = redbot.getCurrentConfig().at(2);
     }
     std::vector<double> phiprime_noise{
       wheel_velocities.at(0) * (1 + unif_dist(get_random())) * (1.0/rate),
