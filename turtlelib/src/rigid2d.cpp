@@ -387,8 +387,8 @@ std::vector<double> DiffDrive::ikinematics(Twist2D twist0)
   if (!almost_equal(twist0.lineary, 0.0)) {
     throw std::logic_error("wheels slipped! since y velocity is not 0");
   } else {
-    return {(-wheel_track * twist0.angular + twist0.linearx) / wheel_radius,
-      (wheel_track * twist0.angular + twist0.linearx) / wheel_radius};
+    return {(-0.5*wheel_track * twist0.angular + twist0.linearx) / wheel_radius,
+      (0.5*wheel_track * twist0.angular + twist0.linearx) / wheel_radius};
   }
 }
 

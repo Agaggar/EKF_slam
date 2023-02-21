@@ -281,8 +281,8 @@ TEST_CASE("Test Translation + Rotation Twist", "DiffDrive") {
     double track = 0.16/2.0;
     double rad = 0.033;
     DiffDrive dd = DiffDrive();
-    dd.setWheelTrack(track);
-    dd.setWheelRadius(rad);
+    // dd.setWheelTrack(track);
+    // dd.setWheelRadius(rad);
     REQUIRE(dd.getCurrentConfig().at(0) == 0);
     REQUIRE(dd.getCurrentConfig().at(1) == 0);
     REQUIRE(dd.getCurrentConfig().at(2) == 0);
@@ -291,9 +291,11 @@ TEST_CASE("Test Translation + Rotation Twist", "DiffDrive") {
 
     Twist2D tw = Twist2D{3*PI/4.0, 3.5, 0.0};
     std::vector<double> ws = dd.ikinematics(tw);
+    // REQUIRE_THAT(ws.at(0), Catch::Matchers::WithinAbs(100.348, 1e-3));
+    REQUIRE_THAT(ws.at(1), Catch::Matchers::WithinAbs(111.7726, 1e-3));
     dd.fkinematics(ws);
-    // REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(-4.9245046986, 1e-5));
-    // REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(0.0, 1e-5));
-    // REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(3*PI/4, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(0), Catch::Matchers::WithinAbs(-4.9245046986, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(1), Catch::Matchers::WithinAbs(0.0, 1e-5));
+    REQUIRE_THAT(dd.getCurrentConfig().at(2), Catch::Matchers::WithinAbs(3*PI/4, 1e-5));
 }
 }
