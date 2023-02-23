@@ -49,6 +49,8 @@ public:
     get_parameter("wheel_left", wheel_left);
     get_parameter("wheel_right", wheel_right);
     std::vector<std::string> params_set {body_id, wheel_left, wheel_right};
+
+    // better to check the return value from get_parameter rather than setting a default string value
     for (unsigned int i = 0; i < params_set.size(); i++) {
       if (params_set.at(i) == std::to_string(-1.0)) {
         RCLCPP_ERROR(get_logger(), "One or more parameters not set!");
@@ -103,7 +105,7 @@ private:
   /// \param js - JointState message received 
   void js_callback(const sensor_msgs::msg::JointState js)
   {
-    if ((js_msg.velocity.size() > 0)) {
+    if ((js_msg.velocity.size() > 1)) {
       nubot.fkinematics(
         std::vector<double>{js.position.at(0) - js_msg.position.at(0),
           js.position.at(1) - js_msg.position.at(1)});

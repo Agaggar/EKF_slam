@@ -34,6 +34,7 @@ A list of parameters in the launch file are as follow:
 - `ros2 topic echo /odom` to see odometry readings
 
 ### Video from Sample Call to See Odom Error
+This video is sped up by a factor of 1/3.
 <video src="https://user-images.githubusercontent.com/10903052/217920104-a421b8dc-50ce-4a4a-8b5e-cf925b39dd95.webm" data-canonical-src="https://user-images.githubusercontent.com/10903052/217920104-a421b8dc-50ce-4a4a-8b5e-cf925b39dd95.webm" controls="controls" muted="muted" class="d-block rounded-bottom-2 border-top width-fit" style="max-height:640px;">
 </video>
 

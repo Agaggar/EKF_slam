@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(nuturtle_control)
+project(turtle_control)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -22,18 +22,9 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
 find_package(nuturtlebot_msgs REQUIRED)
-get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
-# add_library(turtlelib ${DIR_ABOVE}/nuturtle-Agaggar/turtlelib/src/rigid2d.cpp)
-# target_include_directories(turtlelib PUBLIC include/)
-# # enable C++ 17
-# target_compile_features(turtlelib PUBLIC cxx_std_17) 
-# # warnings are your friend!
-# target_compile_options(turtlelib PUBLIC -Wall -Wextra -Wpedantic)
+find_package(nusim REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_msgs
-  # "${DIR_ABOVE}/nuturtlebot_msgs:msg/SensorData.msg"
-  # "${DIR_ABOVE}/nuturtlebot_msgs:msg/WheelCommands.msg"
-  "${DIR_ABOVE}/nuturtle-Agaggar/nusim:srv/Teleport.srv"
   "srv/Circle.srv"
   "srv/Reverse.srv"
   "srv/Stop.srv"
@@ -76,6 +67,7 @@ ament_target_dependencies(
   sensor_msgs
   tf2_geometry_msgs
   nav_msgs
+  nusim
 )
 target_link_libraries(odometry "${cpp_typesupport_target}" turtlelib::turtlelib)
 
