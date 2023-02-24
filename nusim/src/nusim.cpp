@@ -29,6 +29,7 @@
 #include "rcl_interfaces/msg/parameter_descriptor.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "geometry_msgs/msg/point.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "visualization_msgs/msg/marker_array.hpp"
@@ -39,6 +40,7 @@
 #include "turtlelib/diff_drive.hpp"
 #include "builtin_interfaces/msg/time.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "nav_msgs/msg/path.hpp"
 
 using namespace std::chrono_literals;
 
@@ -63,9 +65,9 @@ public:
     slip_fraction(0.0),
     basic_sensor_variance(1.0),
     max_range(1.0),
-    motor_cmd_per_rad_sec(1.0 / 0.024),
-    encoder_ticks_per_rad(651.8986),
     collision_radius(0.11),
+    encoder_ticks_per_rad(651.8986),
+    motor_cmd_per_rad_sec(1.0 / 0.024),
     draw_only(true),
     angle_min(0.0),
     angle_max(6.2657318115234375),
@@ -214,12 +216,13 @@ public:
       "/wheel_cmd", 10, std::bind(
         &Nusim::wheel_cmd_callback, this,
         std::placeholders::_1));
+    red_path_pub = create_publisher<nav_msgs::msg::Path>("~/redpath", 10);
     sd_pub = create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
     five_hz_timer = 
       create_wall_timer(
       std::chrono::milliseconds(200),
       std::bind(&Nusim::fake_sensor_timer, this));
-    fake_sensor_pub = create_publisher<visualization_msgs::msg::MarkerArray>("/fake_sensor", 10);
+    fake_sensor_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/fake_sensor", 10);
   }
 
 private:
@@ -251,6 +254,9 @@ private:
   visualization_msgs::msg::Marker walls_x, walls_y;
   double wall_thickness = 0.1;
   double tolerance = 0.01;
+  nav_msgs::msg::Path red_path;
+  geometry_msgs::msg::PoseStamped current_point;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr red_path_pub;
   std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_position_noise, gauss_dist_lidar_noise;
   std::uniform_real_distribution<> unif_dist;
   double relative_x, relative_y, range_lidar;
@@ -273,6 +279,9 @@ private:
       init_z = z0;
       sd.left_encoder = 0.0;
       sd.right_encoder = 0.0;
+
+      red_path.header.frame_id = "red/base_footprint";
+      current_point.header.frame_id = "red/base_footprint";
 
       fake_lidar.header.frame_id = "base_scan";
       fake_lidar.header.stamp = get_clock()->now();
@@ -299,6 +308,17 @@ private:
       t.transform.rotation.z = q.z();
       t.transform.rotation.w = q.w();
       tf2_rostf_broadcaster_->sendTransform(t);
+
+      // TODO: check how nav_msgs/Path works, and why relative position is so wack 
+      if (timestep % 50 == 0) {
+        red_path.header.stamp = get_clock()->now();
+        current_point.header.stamp = get_clock()->now();
+        current_point.pose.position.x = x0;
+        current_point.pose.position.y = y0;
+        current_point.pose.position.z = z0;
+        red_path.poses.push_back(current_point);
+        red_path_pub->publish(red_path);
+      }
     }
     timestep += 1;
     marker_pub_->publish(all_cyl);
