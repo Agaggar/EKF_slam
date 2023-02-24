@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(turtle_control)
+project(nuturtle_control)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -35,10 +35,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}_msgs
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME}_msgs "rosidl_typesupport_cpp")
 
 add_executable(turtle_control src/turtle_control.cpp)
-# target_include_directories(turtle_control PUBLIC
+# target_include_directories(nuturtle_control PUBLIC
 #   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 #   $<INSTALL_INTERFACE:include>)
-# target_compile_features(turtle_control PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+# target_compile_features(nuturtle_control PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 ament_target_dependencies(
   turtle_control
   rclcpp 

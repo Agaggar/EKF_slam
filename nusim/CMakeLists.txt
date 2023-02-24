@@ -19,8 +19,10 @@ find_package(visualization_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
 find_package(nuturtlebot_msgs)
 find_package(builtin_interfaces REQUIRED)
-find_package(visualization_msgs)
-find_package(sensor_msgs)
+find_package(visualization_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
+
 get_filename_component(DIR_ABOVE ../../ ABSOLUTE)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_srv
@@ -45,6 +47,7 @@ ament_target_dependencies(
   visualization_msgs
   nuturtlebot_msgs
   sensor_msgs
+  nav_msgs
 )
 target_link_libraries(nusim "${cpp_typesupport_target}" turtlelib::turtlelib)
 ament_export_dependencies(rosidl_default_runtime)
