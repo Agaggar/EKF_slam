@@ -98,8 +98,8 @@ private:
       t.header.frame_id = odom_id;
       t.child_frame_id = body_id;
       t.transform.translation.z = 0.0;
-      blue_path.header.frame_id = "blue/base_footprint";
-      current_point.header.frame_id = "blue/base_footprint";
+      blue_path.header.frame_id = "nusim/world";
+      current_point.header.frame_id = "nusim/world";
       current_point.pose.position.z = 0.0;
     }
     t.header.stamp = get_clock()->now();

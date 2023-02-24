@@ -222,7 +222,7 @@ public:
       create_wall_timer(
       std::chrono::milliseconds(200),
       std::bind(&Nusim::fake_sensor_timer, this));
-    fake_sensor_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/fake_sensor", 10);
+    fake_sensor_pub = create_publisher<sensor_msgs::msg::LaserScan>("~/fake_sensor", 10);
   }
 
 private:
@@ -236,7 +236,8 @@ private:
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_, fake_sensor_pub;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr fake_sensor_pub;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sd_pub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
@@ -280,8 +281,8 @@ private:
       sd.left_encoder = 0.0;
       sd.right_encoder = 0.0;
 
-      red_path.header.frame_id = "red/base_footprint";
-      current_point.header.frame_id = "red/base_footprint";
+      red_path.header.frame_id = "nusim/world";
+      current_point.header.frame_id = "nusim/world";
 
       fake_lidar.header.frame_id = "base_scan";
       fake_lidar.header.stamp = get_clock()->now();
