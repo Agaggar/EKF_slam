@@ -145,7 +145,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: ""
+        Value: /odometry/bluepath
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
@@ -232,7 +232,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: ""
+        Value: /nusim/redpath
       Value: true
     - Angle Tolerance: 0.10000000149011612
       Class: rviz_default_plugins/Odometry
@@ -333,7 +333,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: ""
+        Value: /slam_odom/bluepath
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
