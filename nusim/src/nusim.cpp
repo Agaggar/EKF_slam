@@ -217,12 +217,13 @@ public:
         &Nusim::wheel_cmd_callback, this,
         std::placeholders::_1));
     red_path_pub = create_publisher<nav_msgs::msg::Path>("~/redpath", 10);
-    sd_pub = create_publisher<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10);
+    sd_pub = create_publisher<nuturtlebot_msgs::msg::SensorData>("~/sensor_data", 10);
+    laser_scan_pub = create_publisher<sensor_msgs::msg::LaserScan>("~/sim_lidar", 1000);
     five_hz_timer = 
       create_wall_timer(
       std::chrono::milliseconds(200),
       std::bind(&Nusim::fake_sensor_timer, this));
-    fake_sensor_pub = create_publisher<sensor_msgs::msg::LaserScan>("~/fake_sensor", 10);
+    fake_sensor_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/fake_sensor", 1000);
   }
 
 private:
@@ -236,10 +237,10 @@ private:
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr fake_sensor_pub;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_, fake_sensor_pub;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sd_pub;
+  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_pub;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_srv_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_srv_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster_;
@@ -284,7 +285,7 @@ private:
       red_path.header.frame_id = "nusim/world";
       current_point.header.frame_id = "nusim/world";
 
-      fake_lidar.header.frame_id = "base_scan";
+      fake_lidar.header.frame_id = "red/base_scan";
       fake_lidar.header.stamp = get_clock()->now();
       fake_lidar.angle_min = angle_min;
       fake_lidar.angle_max = angle_max;
@@ -310,7 +311,6 @@ private:
       t.transform.rotation.w = q.w();
       tf2_rostf_broadcaster_->sendTransform(t);
 
-      // TODO: check how nav_msgs/Path works, and why relative position is so wack 
       if (timestep % 50 == 0) {
         red_path.header.stamp = get_clock()->now();
         current_point.header.stamp = get_clock()->now();
@@ -331,7 +331,13 @@ private:
   void fake_sensor_timer() {
     cylinders_as_measured();
     simulate_lidar();
+    // RCLCPP_INFO(get_logger(), "len of sim lidar: %ld", fake_lidar.ranges.size());
+    while (fake_lidar.ranges.size() > 720) {
+      fake_lidar.ranges.pop_back();
+    }
     fake_sensor_pub->publish(measured_cyl);
+    fake_lidar.header.stamp = get_clock()->now() - std::chrono::milliseconds(fake_lidar.ranges.size()*10/5);
+    laser_scan_pub->publish(fake_lidar);
   }
 
   /// \brief Wheel_cmd subscription
@@ -357,7 +363,6 @@ private:
     redbot.fkinematics(
       std::vector<double>{left_new_pos, right_new_pos});
     collided = false;
-    // RCLCPP_INFO(get_logger(), "dist: %f, x, y: %f, %f", distance(x0, y0, measured_cyl.markers.at(0).pose.position.x, measured_cyl.markers.at(loop).pose.position.y), x0, y0);
     for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
       if (measured_cyl.markers.at(loop).action != 2 && 
           (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + tolerance))) {
@@ -405,8 +410,47 @@ private:
 
   /// \brief helper function to simulate lidar values
   void simulate_lidar() {
-    range_lidar = gauss_dist_lidar_noise(get_random());
+    float range_lidar;
+    for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
+      if (measured_cyl.markers.at(loop).action != 2) {
+        range_lidar = distance(x0,
+                               y0,
+                               measured_cyl.markers.at(loop).pose.position.x + gauss_dist_lidar_noise(get_random()),
+                               measured_cyl.markers.at(loop).pose.position.y + gauss_dist_lidar_noise(get_random())
+                               );
+        fake_lidar.ranges.push_back(range_lidar);
+        check_max_range(range_lidar);
+      }
+    }
+    check_dist_to_walls();
+  }
 
+  /// \brief helper function to get distance to each wall
+  void check_dist_to_walls() {
+    float range_lidar;
+    range_lidar = distance(x0, y0, x_length/2 + gauss_dist_lidar_noise(get_random()), gauss_dist_lidar_noise(get_random()));
+    if (range_lidar < fake_lidar.range_max) {
+      fake_lidar.ranges.push_back(range_lidar);
+    }
+    range_lidar = distance(x0, y0, -x_length/2 + gauss_dist_lidar_noise(get_random()), gauss_dist_lidar_noise(get_random()));
+    if (range_lidar < fake_lidar.range_max) {
+      fake_lidar.ranges.push_back(range_lidar);
+    }
+    range_lidar = distance(x0, y0, gauss_dist_lidar_noise(get_random()), y_length/2 + gauss_dist_lidar_noise(get_random()));
+    if (range_lidar < fake_lidar.range_max) {
+      fake_lidar.ranges.push_back(range_lidar);
+    }
+    range_lidar = distance(x0, y0, gauss_dist_lidar_noise(get_random()), -y_length/2 + gauss_dist_lidar_noise(get_random()));
+    if (range_lidar < fake_lidar.range_max) {
+      fake_lidar.ranges.push_back(range_lidar);
+    }
+  }
+
+  /// \brief helper function to ensure that the LAST value in ranges is less than the lidar's max range
+  void check_max_range(double range_value) {
+    if (range_value > fake_lidar.range_max) {
+      fake_lidar.ranges.pop_back();
+    }
   }
 
   /// \brief Reset timestep by listening to reset service
