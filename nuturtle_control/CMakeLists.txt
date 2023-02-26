@@ -49,6 +49,7 @@ ament_target_dependencies(
   builtin_interfaces
   sensor_msgs
   nuturtlebot_msgs
+  nusim
 )
 
 target_link_libraries(turtle_control "${cpp_typesupport_target}" turtlelib::turtlelib)
