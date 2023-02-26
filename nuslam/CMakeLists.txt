@@ -46,6 +46,8 @@ ament_target_dependencies(
   nuturtle_control
 )
 
+target_link_libraries(slam turtlelib::turtlelib)
+
 install(TARGETS slam
   DESTINATION lib/${PROJECT_NAME})
 
