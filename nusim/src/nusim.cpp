@@ -7,8 +7,36 @@
 ///     y0 (double): initial y position of the robot (m)
 ///     z0 (double): initial z position of the robot (m)
 ///     theta0 (double): initial heading of the robot (rad)
+///     cyl_radius (double): radius of obstacles (m)
+///     cyl_height (double): height of obstacles (m)
 ///     obstacles.x (std::vector<double>): x coordinates of obstacles (m)
 ///     obstacles.y (std::vector<double>): y coordinates of obstacles (m)
+///     x_length (double): length of walls in x-dir (m)
+///     y_length (double): length of walls in y-dir (m)
+///     input_noise (double): initial heading of the robot (rad)
+///     #TODO: add all parameters, update publishers, etc
+///      (std::vector<double>): x coordinates of obstacles (m)
+///      (std::vector<double>): y coordinates of obstacles (m)
+
+/*
+    input_noise(0.0),
+    slip_fraction(0.0),
+    basic_sensor_variance(1.0),
+    max_range(1.0),
+    collision_radius(0.11),
+    encoder_ticks_per_rad(651.8986),
+    motor_cmd_per_rad_sec(1.0 / 0.024),
+    draw_only(true),
+    angle_min(0.0),
+    angle_max(6.2657318115234375),
+    angle_increment(0.01745329238474369),
+    time_increment(0.0005574136157520115),
+    scan_time(0.20066890120506287),
+    range_min(0.11999999731779099),
+    range_max(3.5),
+    lidar_noise(0.0001)
+  
+*/
 /// PUBLISHES:
 ///     obstacles (visualization_msgs::msg::MarkerArray): publish cylinder markers to rviz
 ///     timestep (int): publish timestep of simulation
