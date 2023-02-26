@@ -24,6 +24,7 @@ find_package(turtlelib REQUIRED)
 find_package(nuturtlebot_msgs REQUIRED)
 find_package(nusim REQUIRED)
 find_package(nuturtle_control REQUIRED)
+find_package(Armadillo)
 
 add_executable(slam src/ekf_slam.cpp)
 # target_include_directories(ekf_slam PUBLIC
@@ -32,7 +33,7 @@ add_executable(slam src/ekf_slam.cpp)
 # target_compile_features(ekf_slam PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
 ament_target_dependencies(
-  turtle_control
+  slam
   rclcpp 
   std_msgs 
   std_srvs 
@@ -45,7 +46,7 @@ ament_target_dependencies(
   nuturtle_control
 )
 
-install(TARGETS ekf_slam
+install(TARGETS slam
   DESTINATION lib/${PROJECT_NAME})
 
 install(
