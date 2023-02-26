@@ -63,7 +63,7 @@
         <node pkg="nusim" exec="nusim"
             args="--ros-args -r __node:=nuwall --params-file $(find-pkg-share nusim)/config/basic_world.yaml -p draw_only:=false" >
             <remap from="/wheel_cmd" to="red/wheel_cmd"/>
-            <remap from="/sensor_data" to="red/sensor_data"/>
+            <remap from="~/sensor_data" to="red/sensor_data"/>
         </node>
 
     </group>
