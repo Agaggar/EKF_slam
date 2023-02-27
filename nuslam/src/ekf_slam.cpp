@@ -36,6 +36,7 @@
 #include "turtlelib/diff_drive.hpp"
 #include "builtin_interfaces/msg/time.hpp"
 #include "geometry_msgs/msg/twist.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 using namespace std::chrono_literals;
 
@@ -46,12 +47,13 @@ class Ekf_slam : public rclcpp::Node
       Node("slam"),
       rate(5.0),
       timestep(0),
-      state_curr(std::vector<double>{0.0,0.0, 0.0}),
-      state_next(std::vector<double>{0.0,0.0, 0.0}),
+      qt(std::vector<double>{0.0,0.0, 0.0}),
+      qt_minusone(std::vector<double>{0.0,0.0, 0.0}),
       wheel_radius(0.033),
       track_width(0.16), 
       motor_cmd_per_rad_sec(1.0 / 0.024), 
-      encoder_ticks_per_rad(651.8986)
+      encoder_ticks_per_rad(651.8986),
+      greenbot()
     {
       declare_parameter("wheel_radius", rclcpp::ParameterValue(-1.0));
       declare_parameter("track_width", rclcpp::ParameterValue(-1.0));
@@ -71,14 +73,20 @@ class Ekf_slam : public rclcpp::Node
         }
       }
 
-      wheel_cmd_sub = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
-      "~/wheel_cmd", 10, std::bind(
-        &Ekf_slam::wheel_cmd_callback, this,
-        std::placeholders::_1));
+      greenbot.setWheelRadius(wheel_radius);
+      greenbot.setWheelTrack(track_width);
+
+      // wheel_cmd_sub = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+      // "~/wheel_cmd", 10, std::bind(
+      //   &Ekf_slam::wheel_cmd_callback, this,
+      //   std::placeholders::_1));
       sd_sub = create_subscription<nuturtlebot_msgs::msg::SensorData>(
         "~/sensor_data", 10, std::bind(
         &Ekf_slam::sd_callback, this,
         std::placeholders::_1));
+      fake_sensor_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
+        "~/fake_sensor", 10, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
+      );
       timer = 
         create_wall_timer(
           std::chrono::milliseconds(int(1.0 / rate * 1000)),
@@ -87,11 +95,14 @@ class Ekf_slam : public rclcpp::Node
 
   private:
     double rate;
-    size_t timestep;
-    std::vector<double> state_curr, state_next;
+    size_t timestep, count;
+    std::vector<double> qt, qt_minusone, dq, d_wheel_rad;
+    std::vector<std::vector<double>> mt_minusone, mt, bigAt;
     double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad;
-    rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
+    turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
+    // rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
     rclcpp::Subscription<nuturtlebot_msgs::msg::SensorData>::SharedPtr sd_sub;
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
     rclcpp::TimerBase::SharedPtr timer;
     
     turtlelib::Twist2D u{0.0, 0.0, 0.0};
@@ -99,26 +110,82 @@ class Ekf_slam : public rclcpp::Node
 
     /// \brief main timer callback
     void timer_callback() {
-      ; // do stuff
-    }
-
-    /// \brief Wheel_cmd subscription
-    /// \param cmd - wheel command message
-    void wheel_cmd_callback(nuturtlebot_msgs::msg::WheelCommands)
-    {
-      // std::vector<double> wheel_velocities{0.0, 0.0};
-      // wheel_velocities.at(0) = cmd.left_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
-      // wheel_velocities.at(1) = cmd.right_velocity / motor_cmd_per_rad_sec; // * max_rot_vel / 265.0;
-      // if (wheel_velocities.at(0) != 0.0 && wheel_velocities.at(1) != 0.0) {
-      //   wheel_velocities.at(0) += gauss_dist_vel_noise(get_random());
-      //   wheel_velocities.at(1) += gauss_dist_vel_noise(get_random());
-      // }
+      if (timestep == 0) {
+        qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
+        RCLCPP_INFO(get_logger(), "state: %f, %f, %f", qt_minusone.at(0), qt_minusone.at(1), qt_minusone.at(2));
+        // qt_minusone = qt;
+        if (d_wheel_rad.size() < 2) {
+          RCLCPP_INFO(get_logger(), "Wheel encoder never set. Defaulting...");
+          d_wheel_rad = {5.0, 5.0};
+        }
+        if (bigAt.size() < 3) {
+          // RCLCPP_INFO(get_logger(), "mt_size: %ld", mt_minusone.at(0).size());
+          bigAt.resize(3);
+        }
+      }
+      else {
+        qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
+        greenbot.fkinematics(std::vector<double>{d_wheel_rad.at(0) - greenbot.getWheelPos().at(0), d_wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
+        dq = {greenbot.getCurrentConfig().at(2) - qt_minusone.at(0), greenbot.getCurrentConfig().at(0) - qt_minusone.at(1), greenbot.getCurrentConfig().at(1) - qt_minusone.at(2)};
+        qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
+        dq = {qt.at(0) - qt_minusone.at(0), qt.at(1) - qt_minusone.at(1), qt.at(2) - qt_minusone.at(2)};
+        create_At();
+        // do stuff to get qt
+      }
+      timestep += 1;
     }
 
     /// \brief sensor data callback
     /// \param sd - sensor data input
     void sd_callback(nuturtlebot_msgs::msg::SensorData sd) {
-      encoder_to_rad(sd.left_encoder, sd.right_encoder);
+      d_wheel_rad = encoder_to_rad(sd.left_encoder, sd.right_encoder);
+      // in here, convert change in encoder to a twist somehow
+    }
+
+    /// \brief obstacle marker callback
+    /// \param obs - obstacle array as published in nusim rviz
+    void fake_sensor_callback(visualization_msgs::msg::MarkerArray obs) {
+      if (mt_minusone.empty()) {
+        mt_minusone.resize(2);
+      }
+      count = 0;
+      for (size_t loop=0; loop < obs.markers.size(); loop++) {
+        if (obs.markers.at(loop).action != 2) {
+          RCLCPP_INFO(get_logger(), "marekr loop");
+          mt_minusone.at(0).push_back(obs.markers.at(loop).pose.position.x);
+          mt_minusone.at(1).push_back(obs.markers.at(loop).pose.position.y);
+          count++;
+        }
+      }
+      if (bigAt.size() < (3+2*count)) {
+        bigAt.resize(3+2*count);
+        RCLCPP_INFO(get_logger(), "bigAt resize: %ld", bigAt.size());
+      }
+    }
+
+    /// \brief helper function to create framework for bigAt
+    void create_At() {
+      RCLCPP_INFO(get_logger(), "bigAt");
+      bigAt.at(0) = (std::vector<double>{0, 0, 0, 0});
+      RCLCPP_INFO(get_logger(), "bigAt set");
+      bigAt.at(1) = (std::vector<double>{-dq.at(2), 0, 0, 0});
+      bigAt.at(2) = (std::vector<double>{dq.at(1), 0, 0, 0});
+      for (size_t loop=0; loop < mt_minusone.size(); loop++) {
+        RCLCPP_INFO(get_logger(), "in da loop");
+        bigAt.at(2 + loop) = std::vector<double>{0, 0, 0, 0};
+      }
+      for (size_t loop=0; loop < mt_minusone.at(0).size(); loop++) {
+        bigAt.at(loop).push_back(0);
+        bigAt.at(loop).push_back(0);
+      }
+      add_identity();
+    }
+
+    /// \brief helper function to add identity
+    void add_identity() {
+      for (size_t loop=0; loop < bigAt.at(0).size(); loop++) {
+        bigAt.at(loop).at(loop) += 1;
+      }
     }
 
     /// \brief helper function to convert encoder data to radians  
