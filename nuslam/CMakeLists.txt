@@ -46,6 +46,8 @@ ament_target_dependencies(
   nusim
   nuturtle_control
   visualization_msgs
+  tf2_ros
+  tf2
 )
 
 target_link_libraries(slam turtlelib::turtlelib)
