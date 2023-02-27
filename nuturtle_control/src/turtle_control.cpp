@@ -43,7 +43,11 @@ public:
     motor_cmd_per_rad_sec(1.0 / 0.024), 
     encoder_ticks_per_rad(651.8986),
     collision_radius(0.11),
-    nubot()
+    nubot(),
+    body_id(),
+    odom_id("odom"),
+    wheel_left(),
+    wheel_right()
   {
     declare_parameter("wheel_radius", rclcpp::ParameterValue(-1.0));
     declare_parameter("track_width", rclcpp::ParameterValue(-1.0));
@@ -57,6 +61,15 @@ public:
     get_parameter("motor_cmd_per_rad_sec", motor_cmd_per_rad_sec);
     get_parameter("encoder_ticks_per_rad", encoder_ticks_per_rad);
     get_parameter("collision_radius", collision_radius);
+    declare_parameter("body_id", rclcpp::ParameterValue("blue/base_footprint"));
+    declare_parameter("odom_id", rclcpp::ParameterValue("odom"));
+    declare_parameter("wheel_left", rclcpp::ParameterValue("wheel_left_joint"));
+    declare_parameter("wheel_right", rclcpp::ParameterValue("wheel_right_joint"));
+    get_parameter("body_id", body_id);
+    get_parameter("odom_id", odom_id);
+    get_parameter("wheel_left", wheel_left);
+    get_parameter("wheel_right", wheel_right);
+    
     std::vector<double> params_set {wheel_radius, track_width, double(motor_cmd_max),
                                     motor_cmd_per_rad_sec, encoder_ticks_per_rad, collision_radius};
 
@@ -85,6 +98,7 @@ private:
   int motor_cmd_max;
   double motor_cmd_per_rad_sec, encoder_ticks_per_rad, collision_radius;
   turtlelib::DiffDrive nubot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
+  std::string body_id, odom_id, wheel_left, wheel_right;
   rclcpp::Publisher<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_pub;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub;
@@ -114,8 +128,8 @@ private:
   /// \param sd - received sensor data
   void sd_callback(const nuturtlebot_msgs::msg::SensorData sd) {
     js_msg.header.stamp = get_clock()->now();
-    js_msg.header.frame_id = "blue/base_footprint";
-    js_msg.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
+    js_msg.header.frame_id = body_id;
+    js_msg.name = std::vector<std::string>{wheel_left, wheel_right};
     js_msg.position = encoder_to_rad(sd.left_encoder, sd.right_encoder);
     js_msg.velocity = compute_vel(js_msg.position, nubot.getWheelPos());
     nubot.fkinematics(js_msg.position);
