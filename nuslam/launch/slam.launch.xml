@@ -6,5 +6,6 @@
         <!-- <remap from="~/sensor_data" to="red/sensor_data"/> -->
         <remap from="~/fake_sensor" to="nusim/fake_sensor" />
         <remap from="~/joint_states" to="blue/joint_states" />
+        <remap from="~/odom" to="green/odom" />
     </node>
 </launch>
