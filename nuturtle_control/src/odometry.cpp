@@ -41,7 +41,8 @@ public:
     odom_id("odom"),
     wheel_left(),
     wheel_right(),
-    timestep(0)
+    timestep(0),
+    pub_odom(true)
   {
     declare_parameter("body_id", rclcpp::ParameterValue(std::to_string(-1.0)));
     declare_parameter("odom_id", rclcpp::ParameterValue("odom"));
@@ -51,6 +52,8 @@ public:
     get_parameter("odom_id", odom_id);
     get_parameter("wheel_left", wheel_left);
     get_parameter("wheel_right", wheel_right);
+    declare_parameter("pub_odom", rclcpp::ParameterValue(pub_odom));
+    get_parameter("pub_odom", pub_odom);
     std::vector<std::string> params_set {body_id, wheel_left, wheel_right};
 
     // better to check the return value from get_parameter rather than setting a default string value
@@ -77,6 +80,8 @@ public:
 
 private:
   std::string body_id, odom_id, wheel_left, wheel_right;
+  size_t timestep;
+  bool pub_odom;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
@@ -89,7 +94,6 @@ private:
   nav_msgs::msg::Path blue_path;
   geometry_msgs::msg::PoseStamped current_point;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr blue_path_pub;
-  size_t timestep;
 
   /// \brief Timer callback
   void timer_callback()
@@ -121,7 +125,9 @@ private:
     }
 
     tf2_rostf_broadcaster->sendTransform(t);
-    odom_pub->publish(compute_odom());
+    if (pub_odom) {
+      odom_pub->publish(compute_odom());
+    }
   }
 
   /// \brief callback function for /joint_states subscription  

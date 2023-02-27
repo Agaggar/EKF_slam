@@ -55,9 +55,8 @@
         </include>
 
         <node pkg="nuturtle_control" exec="odometry"
-            args="--ros-args -p body_id:='green/base_footprint' -p odom_id:='odom' -p wheel_left:='wheel_left_joint' -p wheel_right:='wheel_right_joint' -r __node:=slam_odom" >
+            args="--ros-args -p body_id:='green/base_footprint' -p odom_id:='green/odom' -p wheel_left:='wheel_left_joint' -p wheel_right:='wheel_right_joint' -p pub_odom:='false' -r __node:=slam_odom" >
             <remap from="/blue/joint_states" to="green/joint_states" />
-            <remap from="/odom" to="green/odom" />
         </node>
 
     </group>
@@ -93,6 +92,8 @@
 
         <node pkg="tf2_ros" exec="static_transform_publisher"
             args="0 0 0 0 0 0 nusim/world odom"/>
+        <node pkg="tf2_ros" exec="static_transform_publisher"
+            args="0 0 0 0 0 0 nusim/world map"/>
     </group>
     
     <!-- <node pkg="numsr_turtlebot" exec="numsr_turtlebot" if="$(eval '\'$(var robot)\' == \'localhost\'')" /> -->
