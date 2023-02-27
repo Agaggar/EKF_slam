@@ -87,15 +87,15 @@ class Ekf_slam : public rclcpp::Node
       // "~/wheel_cmd", 10, std::bind(
       //   &Ekf_slam::wheel_cmd_callback, this,
       //   std::placeholders::_1));
-      sd_sub = create_subscription<nuturtlebot_msgs::msg::SensorData>(
-        "~/sensor_data", 10, std::bind(
-        &Ekf_slam::sd_callback, this,
+      js_sub = create_subscription<sensor_msgs::msg::JointState>(
+        "~/joint_states", 10, std::bind(
+        &Ekf_slam::js_callback, this,
         std::placeholders::_1));
       fake_sensor_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
         "~/fake_sensor", 10, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
       );
       tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-    js_pub = create_publisher<sensor_msgs::msg::JointState>("~/joint_states", 10);
+      js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 10);
       timer = 
         create_wall_timer(
           std::chrono::milliseconds(int(1.0 / rate * 1000)),
@@ -105,23 +105,24 @@ class Ekf_slam : public rclcpp::Node
   private:
     double rate;
     size_t timestep, count;
-    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, rj, phij, m_seen, zjt, zhat_jt;
+    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, rj, phij, m_seen, zjt, zhat_jt, dz;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3);
     mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
-    mat Q, Qbar, sys_cov, Hj;
+    mat Q, Qbar, sys_cov_bar, Hj, Kj, R;
     double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     // rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
-    rclcpp::Subscription<nuturtlebot_msgs::msg::SensorData>::SharedPtr sd_sub;
+    rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
     rclcpp::TimerBase::SharedPtr timer;
     geometry_msgs::msg::TransformStamped t;
     tf2::Quaternion q;
-    sensor_msgs::msg::JointState js_msg;
+    sensor_msgs::msg::JointState js_green;
     double dxj, dyj, dj;
+    int poss_obs = 20; // container for total number of obstacles (used in H)
     
     turtlelib::Twist2D u{0.0, 0.0, 0.0};
 
@@ -142,7 +143,8 @@ class Ekf_slam : public rclcpp::Node
           bigAt.zeros(size(3,3));
         }
         Q = arma::eye(3, 3);
-        Hj.zeros(2, 3);
+        R = arma::eye(2, 2);
+        Hj.zeros(2, 3+2*poss_obs);
       }
       else {
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
@@ -155,7 +157,8 @@ class Ekf_slam : public rclcpp::Node
         create_At();
         create_cov();
         measurement_model();
-        // do stuff to UPDATE qt
+        qt = {zeta(0), zeta(1), zeta(2)};
+        greenbot.setCurrentConfig(std::vector<double>{qt(1), qt(2), qt(0)});
       }
       t.header.stamp = get_clock()->now();
       t.header.frame_id = "nusim/world";
@@ -170,20 +173,20 @@ class Ekf_slam : public rclcpp::Node
       t.transform.rotation.w = q.w();
       tf2_rostf_broadcaster->sendTransform(t);
 
-      js_msg.header.stamp = get_clock()->now();
-      js_msg.header.frame_id = "green/base_footprint";
-      js_msg.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
-      js_msg.position = wheel_rad;
-      js_msg.velocity = std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)};
-      js_pub->publish(js_msg);
+      js_green.header.stamp = get_clock()->now();
+      js_green.header.frame_id = "green/base_footprint";
+      js_green.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
+      js_green.position = wheel_rad;
+      js_green.velocity = std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)};
+      js_pub->publish(js_green);
 
       timestep += 1;
     }
 
     /// \brief sensor data callback
     /// \param sd - sensor data input
-    void sd_callback(nuturtlebot_msgs::msg::SensorData sd) {
-      wheel_rad = encoder_to_rad(sd.left_encoder, sd.right_encoder);
+    void js_callback(sensor_msgs::msg::JointState js) {
+      wheel_rad = {js.position.at(0), js.position.at(1)};
       // in here, convert change in encoder to a twist somehow
     }
 
@@ -266,24 +269,20 @@ class Ekf_slam : public rclcpp::Node
         for (size_t n = old_n; n < mt_minusone.n_elem/2; n++) {
           sys_cov_minusone(3+n,3+n) = 100000; // large value for unknown diagonal measurements
         }
-        sys_cov = sys_cov_minusone;
+        sys_cov_bar = sys_cov_minusone;
         RCLCPP_INFO(get_logger(), "here 6");
       }
       for (size_t i = 0; i < bigAt.n_rows; i++) {
         for (size_t j = 0; j < bigAt.n_cols; j++) {
-          RCLCPP_INFO(get_logger(), "diag A, %f, cov: %f, Qbar: %f", bigAt(i, j), sys_cov_minusone(i, j), Qbar(i, j));
+          // RCLCPP_INFO(get_logger(), "diag A, %f, cov: %f, Qbar: %f", bigAt(i, j), sys_cov_minusone(i, j), Qbar(i, j));
         }
       }
-      // arma::mat mul not working
-      // RCLCPP_INFO(get_logger(), "sizes: %lld, %lld, %lld, %lld", bigAt.n_rows, sys_cov_minusone.n_rows, bigAt.n_cols, sys_cov_minusone.n_cols);
-      // sys_cov = bigAt * sys_cov_minusone * bigAt.t() + Qbar;
+      // RCLCPP_INFO(get_logger(), "diag A, %lld, cov: %lld, Qbar: %lld", bigAt.n_elem, sys_cov_minusone.n_elem, Qbar.n_elem);
+      sys_cov_bar = bigAt * sys_cov_minusone * bigAt.t() + Qbar;
     }
 
     /// \brief function to create measurement model
     void measurement_model() {
-      if (Hj.n_elem != (2*(3+2*m_seen.n_elem))) {
-        Hj.zeros(2, (3+2*m_seen.n_elem));
-      }
       for (size_t j = 0; j < m_seen.n_elem; j++) {
         if (!m_seen(j)) {
           zeta(3+2*j) = zeta(1) + rj(j)*cos(phij(j) + zeta(0)); // update measured landmark x
@@ -294,9 +293,41 @@ class Ekf_slam : public rclcpp::Node
         dj = dxj*dxj + dyj*dyj;
         zhat_jt(j) =  sqrt(dj);
         zhat_jt(j + m_seen.n_elem) = turtlelib::normalize_angle(atan2(dyj, dxj) - zeta(0)); 
-
+        Hj.zeros(2, 3+2*m_seen.n_elem);
+        // should never be called if measurements don't exist
+        populate_Hj(j);
+        Kj.zeros(3, 2+2*m_seen.n_elem);
+        Kj = sys_cov_bar*Hj.t()*((Hj*sys_cov_bar*Hj.t() + R).i());
+        RCLCPP_INFO(get_logger(), "KJ, %lld, %lld", Kj.n_rows, Kj.n_cols);
+        dz.zeros(2, 1);
+        dz(0) = zhat_jt(j) - zjt(j);
+        dz(1) = zhat_jt(j+m_seen.n_elem) - zjt(j+m_seen.n_elem);
+        zeta = zeta + Kj*dz;
+        // RCLCPP_INFO(get_logger(), "zeta, %f, %f, %f", zeta(0), zeta(1), zeta(2));
+        sys_cov_bar = (mat(3+2*m_seen.n_elem, 3+2*m_seen.n_elem, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+        // RCLCPP_INFO(get_logger(), "updated zeta: %ld", j);
       }
 
+    }
+
+    /// \brief helper function to create Hj
+    /// \param j - number of landmark seen
+    void populate_Hj(size_t j) {
+      if (j >= poss_obs) {
+        RCLCPP_INFO(get_logger(), "too many landmarks!");
+        rclcpp::shutdown();
+      }
+      Hj(0, 0) = 0;
+      Hj(0, 1) = -dxj/sqrt(dj);
+      Hj(0, 2) = -dyj/sqrt(dj);
+      Hj(1, 0) = -1;
+      Hj(1, 1) = dyj/dj;
+      Hj(1, 2) = -dxj/dj;
+
+      Hj(0, 3+2*j) = dxj/sqrt(dj);
+      Hj(1, 3+2*j+1) = dyj/sqrt(dj);;
+      Hj(0, 3+2*j) = -dyj/dj;
+      Hj(1, 3+2*j+1) = dxj/dj;
     }
 
     /// \brief helper function to convert encoder data to radians  
