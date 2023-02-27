@@ -105,9 +105,11 @@ class Ekf_slam : public rclcpp::Node
   private:
     double rate;
     size_t timestep, count;
-    vec qt, qt_minusone, dq, mt_minusone, mt;
-    std::vector<double> d_wheel_rad;
-    mat bigAt = mat(2, 3);
+    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, rj, phij, m_seen, zjt, zhat_jt;
+    std::vector<double> wheel_rad;
+    mat bigAt = mat(3, 3);
+    mat sys_cov = mat(3, 3, fill::zeros);
+    mat Q, Qbar;
     double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     // rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
@@ -119,6 +121,7 @@ class Ekf_slam : public rclcpp::Node
     geometry_msgs::msg::TransformStamped t;
     tf2::Quaternion q;
     sensor_msgs::msg::JointState js_msg;
+    double dxj, dyj, dj;
     
     turtlelib::Twist2D u{0.0, 0.0, 0.0};
 
@@ -128,25 +131,29 @@ class Ekf_slam : public rclcpp::Node
       if (timestep == 0) {
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         // RCLCPP_INFO(get_logger(), "state: %f, %f, %f", qt_minusone.at(0), qt_minusone.at(1), qt_minusone.at(2));
-        std::cout << bigAt.size();
         // qt_minusone = qt;
-        if (d_wheel_rad.size() < 2) {
+        if (wheel_rad.size() < 2) {
           // RCLCPP_INFO(get_logger(), "Wheel encoder never set. Defaulting...");
-          d_wheel_rad = {0.0, 0.0};
+          wheel_rad = {0.0, 0.0};
         }
-        if (bigAt.size() < 3) {
+        if (bigAt.n_elem < 9) {
           // RCLCPP_INFO(get_logger(), "mt_size: %ld", mt_minusone.at(0).size());
-          bigAt.resize(3);
+          bigAt.set_size(3, 3);
         }
+        Q = arma::eye(3, 3);
       }
       else {
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-        greenbot.fkinematics(std::vector<double>{d_wheel_rad.at(0) - greenbot.getWheelPos().at(0), d_wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
+        greenbot.fkinematics(std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
         dq = {greenbot.getCurrentConfig().at(2) - qt_minusone.at(0), greenbot.getCurrentConfig().at(0) - qt_minusone.at(1), greenbot.getCurrentConfig().at(1) - qt_minusone.at(2)};
         qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-        dq = {qt.at(0) - qt_minusone.at(0), qt.at(1) - qt_minusone.at(1), qt.at(2) - qt_minusone.at(2)};
+        dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
+        zeta_minusone = join_cols(qt_minusone, mt_minusone);
+        zeta = join_cols(qt, mt_minusone); // since mt = mt_minusone in our prediction (the landmarks don't move)
         create_At();
-        // do stuff to get qt
+        create_cov();
+        measurement_model();
+        // do stuff to UPDATE qt
       }
       t.header.stamp = get_clock()->now();
       t.header.frame_id = "nusim/world";
@@ -164,8 +171,8 @@ class Ekf_slam : public rclcpp::Node
       js_msg.header.stamp = get_clock()->now();
       js_msg.header.frame_id = "green/base_footprint";
       js_msg.name = std::vector<std::string>{"wheel_left_joint", "wheel_right_joint"};
-      js_msg.position = d_wheel_rad; // d_wheel_rad is supposed to be a CHANGE in rad
-      js_msg.velocity = d_wheel_rad; // this is supposed to be velocity
+      js_msg.position = wheel_rad;
+      js_msg.velocity = std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)};
       js_pub->publish(js_msg);
 
       timestep += 1;
@@ -174,7 +181,7 @@ class Ekf_slam : public rclcpp::Node
     /// \brief sensor data callback
     /// \param sd - sensor data input
     void sd_callback(nuturtlebot_msgs::msg::SensorData sd) {
-      d_wheel_rad = encoder_to_rad(sd.left_encoder, sd.right_encoder);
+      wheel_rad = encoder_to_rad(sd.left_encoder, sd.right_encoder);
       // in here, convert change in encoder to a twist somehow
     }
 
@@ -187,19 +194,44 @@ class Ekf_slam : public rclcpp::Node
           count++;
         }
       }
-      if (mt_minusone.empty()) {
-        mt_minusone.resize(2*count);
+      if (mt_minusone.n_elem != 2*count) {
+        RCLCPP_INFO(get_logger(), "here 2.1.1");
+        mt_minusone.set_size(2*count);
       }
+      if (rj.n_elem != count) {
+        rj.set_size(count);
+      }
+      if (phij.n_elem != count) {
+        phij.set_size(count);
+      }
+      if (m_seen.n_elem != count) {
+        m_seen.set_size(count);
+      }
+      count = 0;
       for (size_t loop=0; loop < obs.markers.size(); loop++) {
         if (obs.markers.at(loop).action != 2) {
-          mt_minusone(2*loop) = (obs.markers.at(loop).pose.position.x);
-          mt_minusone(2*loop + 1) = (obs.markers.at(loop).pose.position.y);
+          mt_minusone(2*count) = (obs.markers.at(loop).pose.position.x);
+          mt_minusone(2*count + 1) = (obs.markers.at(loop).pose.position.y);
+          // if seen, else
+          if (turtlelib::almost_equal(rj(count), distance(0.0, 0.0, mt_minusone(2*count), mt_minusone(2*count + 1)), 0.01) &&
+              turtlelib::almost_equal(phij(count), turtlelib::normalize_angle(atan2(mt_minusone(2*count + 1), mt_minusone(2*count))))) {
+                m_seen(count) = 1;
+          }
+          else {
+            rj(count) = distance(0.0, 0.0, mt_minusone(2*count), mt_minusone(2*count + 1));
+            phij(count) = turtlelib::normalize_angle(atan2(mt_minusone(2*count + 1), mt_minusone(2*count)));
+            m_seen(count) = 0;
+          }
+          count++;
         }
       }
-      if (bigAt.size() < (3+2*count)) {
-        bigAt.resize(3+2*count, 3+2*count);
-        RCLCPP_INFO(get_logger(), "bigAt resize: %lld", bigAt.size());
+      zjt = arma::join_cols(rj, phij);
+      zhat_jt = arma::join_cols(rj, phij); // this will be later updated, but for now it's the same size as zjt
+      if (bigAt.n_elem != (3+2*count)*(3+2*count)) {
+        bigAt.set_size(3+2*count, 3+2*count);
+        RCLCPP_INFO(get_logger(), "bigAt resize: %lld", bigAt.n_rows);
       }
+
     }
 
     /// \brief helper function to create framework for bigAt
@@ -207,6 +239,44 @@ class Ekf_slam : public rclcpp::Node
       bigAt.eye();
       bigAt.at(1, 1) = -dq.at(2);
       bigAt.at(2, 1) = dq.at(1);
+      // create Qbar, if new landmarks are found (including at t=0)
+      if (Qbar.n_elem != bigAt.n_elem) {
+        Qbar = mat(bigAt.n_rows, bigAt.n_cols);
+        for (int i = 0; i < 3; i++) {
+          for (int j = 0; i < 3; i++) {
+            Qbar(i, j) = Q(i, j);
+          }
+        }
+      }
+    }
+
+    /// \brief helper function to create system covariance matrix 
+    void create_cov() {
+      if (sys_cov.n_elem != bigAt.n_elem) {
+        // initialize new landmarks 
+        size_t old_n = sys_cov.n_rows;
+        sys_cov.resize(3+mt_minusone.n_elem, 3+mt_minusone.n_elem);
+        for (size_t n = old_n; n < mt_minusone.n_elem/2; n++) {
+          sys_cov(3+n,3+n) = 100000; // large value for unknown diagonal measurements
+        }
+        RCLCPP_INFO(get_logger(), "here 6");
+      }
+      // sys_cov = bigAt * sys_cov * bigAt.t() + Qbar;
+    }
+
+    /// \brief function to create measurement model
+    void measurement_model() {
+      for (size_t j = 0; j < m_seen.n_elem; j++) {
+        if (!m_seen(j)) {
+          zeta(3+2*j) = zeta(1) + rj(j)*cos(phij(j) + zeta(0)); // update measured landmark x
+          zeta(3+2*j+1) = zeta(2) + rj(j)*sin(phij(j) + zeta(0)); // update measured landmark y
+        }
+        dxj =  zeta(3+2*j) - zeta(1);
+        dyj = zeta(3+2*j+1) - zeta(2);
+        dj = dxj*dxj + dyj*dyj;
+        zhat_jt(j) =  sqrt(dj);
+        zhat_jt(j + m_seen.n_elem) = turtlelib::normalize_angle(atan2(dyj, dxj) - zeta(0)); 
+      }
     }
 
     /// \brief helper function to convert encoder data to radians  
@@ -215,6 +285,16 @@ class Ekf_slam : public rclcpp::Node
     /// \return radian values for each wheel 
     std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
       return std::vector<double> {double(left_encoder)/encoder_ticks_per_rad, double(right_encoder)/encoder_ticks_per_rad};
+    }
+
+    /// \brief helper function to check distance between points
+    /// \param origin_x - current x coordinate
+    /// \param origin_y - current y coordinate
+    /// \param point_x - target x coordinate
+    /// \param point_y - target y coordinate
+    /// \return distance
+    double distance(double origin_x, double origin_y, double point_x, double point_y) {
+      return sqrt(pow((origin_x - point_x), 2.0) + pow((origin_y - point_y), 2.0));
     }
 };
 
