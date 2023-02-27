@@ -36,18 +36,15 @@ add_executable(slam src/ekf_slam.cpp)
 ament_target_dependencies(
   slam
   rclcpp 
-  std_msgs 
-  std_srvs 
-  rcl_interfaces
   geometry_msgs
-  builtin_interfaces
   sensor_msgs
-  nuturtlebot_msgs
   nusim
   nuturtle_control
   visualization_msgs
   tf2_ros
   tf2
+  tf2_geometry_msgs
+  nav_msgs
   Armadillo
 )
 
