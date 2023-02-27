@@ -45,7 +45,7 @@
         <node pkg="nusim" exec="nusim"
             args="--ros-args --params-file $(find-pkg-share nusim)/config/basic_world.yaml">
             <remap from="/wheel_cmd" to="red/wheel_cmd"/>
-            <remap from="/sensor_data" to="red/sensor_data"/>
+            <remap from="~/sensor_data" to="red/sensor_data"/>
         </node>
 
         <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py" >
@@ -56,6 +56,8 @@
 
         <node pkg="nuturtle_control" exec="odometry"
             args="--ros-args -p body_id:='green/base_footprint' -p odom_id:='odom' -p wheel_left:='wheel_left_joint' -p wheel_right:='wheel_right_joint' -r __node:=slam_odom" >
+            <remap from="/blue/joint_states" to="green/joint_states" />
+            <remap from="/odom" to="green/odom" />
         </node>
 
     </group>
