@@ -315,32 +315,20 @@ Transform2D DiffDrive::integrate_twist(Twist2D twist0)
   return Tbbprime;
 }
 
-void DiffDrive::fkinematics(const double phi_l_new, const double phi_r_new)
-{
-  // Twist2D Vb = velToTwist(std::vector<double>(phi_l_new - phi.at(0), phi_r_new - phi.at(1)));
-  // Transform2D Tbbprime = integrate_twist(Vb);
-  // Transform2D Twb = Transform2D(Vector2D{q.at(0), q.at(1)}, q.at(2));
-  // Transform2D Twbprime = Twb * Tbbprime;
-  // Twist2D dq{Twbprime.rotation(), Twbprime.translation().x, Twbprime.translation().y};
-  std::vector<std::vector<double>> hstar {{-wheel_radius / 2.0 / wheel_track,
-    wheel_radius / 2.0 / wheel_track},
-    {wheel_radius / 2.0 * cos(q.at(2)), wheel_radius / 2.0 * cos(q.at(2))},
-    {wheel_radius / 2.0 * sin(q.at(2)), wheel_radius / 2.0 * sin(q.at(2))}};
-  Twist2D dq = {hstar.at(0).at(0) * (phi_l_new - phi.at(0)) + hstar.at(0).at(1) * (phi_r_new - phi.at(1)),
-    hstar.at(1).at(0) * (phi_l_new - phi.at(0)) + hstar.at(1).at(1) * (phi_r_new - phi.at(1)),
-    hstar.at(2).at(0) * (phi_l_new - phi.at(0)) + hstar.at(2).at(1) * (phi_r_new - phi.at(1))};
-  // Twist2D dqb = Twist2D{Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
-  // Transform2D adj_theta = Transform2D{q.at(2)}.adj();
-  // adj_theta.setRotation(q.at(2));
-  // Twist2D dq = adj_theta.conv_diff_frame(Vb);
-  q.at(0) += dq.linearx;
-  q.at(1) += dq.lineary;
-  q.at(2) += dq.angular;
-}
-
 void DiffDrive::fkinematics(const std::vector<double> phiprime)
 {
+  // Transform2D Tbbprime = integrate_twist(velToTwist(phiprime));
+  // Twist2D Vb = {Tbbprime.rotation(), Tbbprime.translation().x, Tbbprime.translation().y};
   // Twist2D Vb = velToTwist(phiprime);
+  // Twist2D dq;
+  // if (almost_equal(Vb.angular, 0.0, 1e-4)) {
+  //   dq = {0.0, Vb.linearx*cos(getCurrentConfig().at(2)), Vb.linearx*sin(getCurrentConfig().at(2))};
+  // }
+  // else {
+  //   dq = {Vb.angular,
+  //         -Vb.linearx/Vb.angular*(sin(getCurrentConfig().at(2)) - sin(getCurrentConfig().at(2) + Vb.angular)),
+  //         Vb.linearx/Vb.angular*(cos(getCurrentConfig().at(2)) - cos(getCurrentConfig().at(2) + Vb.angular))};
+  // }
   // Transform2D Tbbprime = integrate_twist(Vb);
   // Transform2D Twb = Transform2D(Vector2D{q.at(0), q.at(1)}, q.at(2));
   // Transform2D Twbprime = Twb * Tbbprime;
@@ -361,7 +349,7 @@ void DiffDrive::fkinematics(const std::vector<double> phiprime)
   q.at(2) += dq.angular;
   phi.at(0) += phiprime.at(0);
   phi.at(1) += phiprime.at(1);
-  // q.at(2) = turtlelib::normalize_angle(q.at(2));
+  q.at(2) = turtlelib::normalize_angle(q.at(2));
 }
 
 Twist2D DiffDrive::velToTwist(const std::vector<double> phiprime)
@@ -387,8 +375,8 @@ std::vector<double> DiffDrive::ikinematics(Twist2D twist0)
   if (!almost_equal(twist0.lineary, 0.0)) {
     throw std::logic_error("wheels slipped! since y velocity is not 0");
   } else {
-    return {(-0.5*wheel_track * twist0.angular + twist0.linearx) / wheel_radius,
-      (0.5*wheel_track * twist0.angular + twist0.linearx) / wheel_radius};
+    return {(-wheel_track * twist0.angular + twist0.linearx) / wheel_radius,
+      (wheel_track * twist0.angular + twist0.linearx) / wheel_radius};
   }
 }
 
