@@ -108,8 +108,8 @@ class Ekf_slam : public rclcpp::Node
     vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, rj, phij, m_seen, zjt, zhat_jt;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3);
-    mat sys_cov = mat(3, 3, fill::zeros);
-    mat Q, Qbar;
+    mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
+    mat Q, Qbar, sys_cov, Hj;
     double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     // rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
@@ -138,9 +138,11 @@ class Ekf_slam : public rclcpp::Node
         }
         if (bigAt.n_elem < 9) {
           // RCLCPP_INFO(get_logger(), "mt_size: %ld", mt_minusone.at(0).size());
-          bigAt.set_size(3, 3);
+          // bigAt.set_size(3, 3);
+          bigAt.zeros(size(3,3));
         }
         Q = arma::eye(3, 3);
+        Hj.zeros(2, 3);
       }
       else {
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
@@ -148,8 +150,8 @@ class Ekf_slam : public rclcpp::Node
         dq = {greenbot.getCurrentConfig().at(2) - qt_minusone.at(0), greenbot.getCurrentConfig().at(0) - qt_minusone.at(1), greenbot.getCurrentConfig().at(1) - qt_minusone.at(2)};
         qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
-        zeta_minusone = join_cols(qt_minusone, mt_minusone);
-        zeta = join_cols(qt, mt_minusone); // since mt = mt_minusone in our prediction (the landmarks don't move)
+        zeta_minusone = arma::join_cols(qt_minusone, mt_minusone);
+        zeta = arma::join_cols(qt, mt_minusone); // since mt = mt_minusone in our prediction (the landmarks don't move)
         create_At();
         create_cov();
         measurement_model();
@@ -196,16 +198,20 @@ class Ekf_slam : public rclcpp::Node
       }
       if (mt_minusone.n_elem != 2*count) {
         RCLCPP_INFO(get_logger(), "here 2.1.1");
-        mt_minusone.set_size(2*count);
+        // mt_minusone.set_size(2*count);
+        mt_minusone.zeros(2*count);
       }
       if (rj.n_elem != count) {
-        rj.set_size(count);
+        // rj.set_size(count);
+        rj.zeros(2*count);
       }
       if (phij.n_elem != count) {
-        phij.set_size(count);
+        // phij.set_size(count);
+        phij.zeros(2*count);
       }
       if (m_seen.n_elem != count) {
-        m_seen.set_size(count);
+        // m_seen.set_size(count);
+        m_seen.zeros(count);
       }
       count = 0;
       for (size_t loop=0; loop < obs.markers.size(); loop++) {
@@ -228,7 +234,8 @@ class Ekf_slam : public rclcpp::Node
       zjt = arma::join_cols(rj, phij);
       zhat_jt = arma::join_cols(rj, phij); // this will be later updated, but for now it's the same size as zjt
       if (bigAt.n_elem != (3+2*count)*(3+2*count)) {
-        bigAt.set_size(3+2*count, 3+2*count);
+        // bigAt.set_size(3+2*count, 3+2*count);
+        bigAt.zeros(3+2*count, 3+2*count);
         RCLCPP_INFO(get_logger(), "bigAt resize: %lld", bigAt.n_rows);
       }
 
@@ -241,7 +248,7 @@ class Ekf_slam : public rclcpp::Node
       bigAt.at(2, 1) = dq.at(1);
       // create Qbar, if new landmarks are found (including at t=0)
       if (Qbar.n_elem != bigAt.n_elem) {
-        Qbar = mat(bigAt.n_rows, bigAt.n_cols);
+        Qbar = mat(bigAt.n_rows, bigAt.n_cols, arma::fill::zeros);
         for (int i = 0; i < 3; i++) {
           for (int j = 0; i < 3; i++) {
             Qbar(i, j) = Q(i, j);
@@ -252,20 +259,31 @@ class Ekf_slam : public rclcpp::Node
 
     /// \brief helper function to create system covariance matrix 
     void create_cov() {
-      if (sys_cov.n_elem != bigAt.n_elem) {
+      if (sys_cov_minusone.n_elem != bigAt.n_elem) {
         // initialize new landmarks 
-        size_t old_n = sys_cov.n_rows;
-        sys_cov.resize(3+mt_minusone.n_elem, 3+mt_minusone.n_elem);
+        size_t old_n = sys_cov_minusone.n_rows;
+        sys_cov_minusone.zeros(3+mt_minusone.n_elem, 3+mt_minusone.n_elem);
         for (size_t n = old_n; n < mt_minusone.n_elem/2; n++) {
-          sys_cov(3+n,3+n) = 100000; // large value for unknown diagonal measurements
+          sys_cov_minusone(3+n,3+n) = 100000; // large value for unknown diagonal measurements
         }
+        sys_cov = sys_cov_minusone;
         RCLCPP_INFO(get_logger(), "here 6");
       }
-      // sys_cov = bigAt * sys_cov * bigAt.t() + Qbar;
+      for (size_t i = 0; i < bigAt.n_rows; i++) {
+        for (size_t j = 0; j < bigAt.n_cols; j++) {
+          RCLCPP_INFO(get_logger(), "diag A, %f, cov: %f, Qbar: %f", bigAt(i, j), sys_cov_minusone(i, j), Qbar(i, j));
+        }
+      }
+      // arma::mat mul not working
+      // RCLCPP_INFO(get_logger(), "sizes: %lld, %lld, %lld, %lld", bigAt.n_rows, sys_cov_minusone.n_rows, bigAt.n_cols, sys_cov_minusone.n_cols);
+      // sys_cov = bigAt * sys_cov_minusone * bigAt.t() + Qbar;
     }
 
     /// \brief function to create measurement model
     void measurement_model() {
+      if (Hj.n_elem != (2*(3+2*m_seen.n_elem))) {
+        Hj.zeros(2, (3+2*m_seen.n_elem));
+      }
       for (size_t j = 0; j < m_seen.n_elem; j++) {
         if (!m_seen(j)) {
           zeta(3+2*j) = zeta(1) + rj(j)*cos(phij(j) + zeta(0)); // update measured landmark x
@@ -276,7 +294,9 @@ class Ekf_slam : public rclcpp::Node
         dj = dxj*dxj + dyj*dyj;
         zhat_jt(j) =  sqrt(dj);
         zhat_jt(j + m_seen.n_elem) = turtlelib::normalize_angle(atan2(dyj, dxj) - zeta(0)); 
+
       }
+
     }
 
     /// \brief helper function to convert encoder data to radians  
