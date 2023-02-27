@@ -32,16 +32,17 @@
 #include <chrono>
 #include <iostream>
 #include "rclcpp/rclcpp.hpp"
-#include "nuturtlebot_msgs/msg/wheel_commands.hpp"
-#include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "turtlelib/diff_drive.hpp"
 #include "builtin_interfaces/msg/time.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 #include "geometry_msgs/msg/transform_stamped.hpp"
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "nav_msgs/msg/odometry.hpp"
 #include <armadillo>
 
 using namespace std::chrono_literals;
@@ -88,14 +89,15 @@ class Ekf_slam : public rclcpp::Node
       //   &Ekf_slam::wheel_cmd_callback, this,
       //   std::placeholders::_1));
       js_sub = create_subscription<sensor_msgs::msg::JointState>(
-        "~/joint_states", 10, std::bind(
+        "~/joint_states", 100, std::bind(
         &Ekf_slam::js_callback, this,
         std::placeholders::_1));
       fake_sensor_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
-        "~/fake_sensor", 10, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
+        "~/fake_sensor", 100, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
       );
       tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-      js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 10);
+      js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 100);
+      odom_pub = create_publisher<nav_msgs::msg::Odometry>("~/odom", 100);
       timer = 
         create_wall_timer(
           std::chrono::milliseconds(int(1.0 / rate * 1000)),
@@ -112,15 +114,16 @@ class Ekf_slam : public rclcpp::Node
     mat Q, Qbar, sys_cov_bar, Hj, Kj, R;
     double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
-    // rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub;
+    rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
     rclcpp::TimerBase::SharedPtr timer;
-    geometry_msgs::msg::TransformStamped t;
+    geometry_msgs::msg::TransformStamped t, t_odom_g;
     tf2::Quaternion q;
     sensor_msgs::msg::JointState js_green;
+    nav_msgs::msg::Odometry odom_msg;
     double dxj, dyj, dj;
     int poss_obs = 20; // container for total number of obstacles (used in H)
     
@@ -142,9 +145,14 @@ class Ekf_slam : public rclcpp::Node
           // bigAt.set_size(3, 3);
           bigAt.zeros(size(3,3));
         }
-        Q = arma::eye(3, 3);
+        // Q = arma::eye(3, 3);
+        Q = arma::zeros(3, 3);
         R = arma::eye(2, 2);
         Hj.zeros(2, 3+2*poss_obs);
+
+        t.header.frame_id = "map";
+        t.child_frame_id = "green/odom";
+        t.transform.translation.z = 0.0;
       }
       else {
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
@@ -159,13 +167,11 @@ class Ekf_slam : public rclcpp::Node
         measurement_model();
         qt = {zeta(0), zeta(1), zeta(2)};
         greenbot.setCurrentConfig(std::vector<double>{qt(1), qt(2), qt(0)});
+        RCLCPP_INFO(get_logger(), "updated zeta, robot state: %.3f, %.3f, %.3f", zeta(0), zeta(1), zeta(2));
       }
       t.header.stamp = get_clock()->now();
-      t.header.frame_id = "nusim/world";
-      t.child_frame_id = "green/base_footprint";
       t.transform.translation.x = greenbot.getCurrentConfig().at(0);
       t.transform.translation.y = greenbot.getCurrentConfig().at(1);
-      t.transform.translation.z = 0.0;
       q.setRPY(0, 0, greenbot.getCurrentConfig().at(2));
       t.transform.rotation.x = q.x();
       t.transform.rotation.y = q.y();
@@ -179,6 +185,8 @@ class Ekf_slam : public rclcpp::Node
       js_green.position = wheel_rad;
       js_green.velocity = std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)};
       js_pub->publish(js_green);
+
+      odom_pub->publish(compute_odom());
 
       timestep += 1;
     }
@@ -200,7 +208,6 @@ class Ekf_slam : public rclcpp::Node
         }
       }
       if (mt_minusone.n_elem != 2*count) {
-        RCLCPP_INFO(get_logger(), "here 2.1.1");
         // mt_minusone.set_size(2*count);
         mt_minusone.zeros(2*count);
       }
@@ -270,7 +277,6 @@ class Ekf_slam : public rclcpp::Node
           sys_cov_minusone(3+n,3+n) = 100000; // large value for unknown diagonal measurements
         }
         sys_cov_bar = sys_cov_minusone;
-        RCLCPP_INFO(get_logger(), "here 6");
       }
       for (size_t i = 0; i < bigAt.n_rows; i++) {
         for (size_t j = 0; j < bigAt.n_cols; j++) {
@@ -298,12 +304,11 @@ class Ekf_slam : public rclcpp::Node
         populate_Hj(j);
         Kj.zeros(3, 2+2*m_seen.n_elem);
         Kj = sys_cov_bar*Hj.t()*((Hj*sys_cov_bar*Hj.t() + R).i());
-        RCLCPP_INFO(get_logger(), "KJ, %lld, %lld", Kj.n_rows, Kj.n_cols);
+        // RCLCPP_INFO(get_logger(), "KJ, %lld, %lld", Kj.n_rows, Kj.n_cols);
         dz.zeros(2, 1);
         dz(0) = zhat_jt(j) - zjt(j);
         dz(1) = zhat_jt(j+m_seen.n_elem) - zjt(j+m_seen.n_elem);
         zeta = zeta + Kj*dz;
-        // RCLCPP_INFO(get_logger(), "zeta, %f, %f, %f", zeta(0), zeta(1), zeta(2));
         sys_cov_bar = (mat(3+2*m_seen.n_elem, 3+2*m_seen.n_elem, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
         // RCLCPP_INFO(get_logger(), "updated zeta: %ld", j);
       }
@@ -330,14 +335,6 @@ class Ekf_slam : public rclcpp::Node
       Hj(1, 3+2*j+1) = dxj/dj;
     }
 
-    /// \brief helper function to convert encoder data to radians  
-    /// \param left_encoder - encoder ticks, left wheel  
-    /// \param right_encoder - encoder ticks, right wheel
-    /// \return radian values for each wheel 
-    std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
-      return std::vector<double> {double(left_encoder)/encoder_ticks_per_rad, double(right_encoder)/encoder_ticks_per_rad};
-    }
-
     /// \brief helper function to check distance between points
     /// \param origin_x - current x coordinate
     /// \param origin_y - current y coordinate
@@ -347,6 +344,38 @@ class Ekf_slam : public rclcpp::Node
     double distance(double origin_x, double origin_y, double point_x, double point_y) {
       return sqrt(pow((origin_x - point_x), 2.0) + pow((origin_y - point_y), 2.0));
     }
+
+    /// \brief helper function to compute and return an odometry message
+  /// \return odometry message
+  nav_msgs::msg::Odometry compute_odom()
+  {
+    nav_msgs::msg::Odometry odom_msg;
+    odom_msg.header.stamp = get_clock()->now();
+    odom_msg.header.frame_id = "green/odom";
+    odom_msg.child_frame_id = "green/base_footprint";
+    odom_msg.pose.pose.position.x = greenbot.getCurrentConfig().at(0);
+    odom_msg.pose.pose.position.y = greenbot.getCurrentConfig().at(1);
+    odom_msg.pose.pose.position.z = 0.0;
+    tf2::Quaternion q;
+    q.setRPY(0.0, 0.0, greenbot.getCurrentConfig().at(2));
+    q.normalize();
+    geometry_msgs::msg::Quaternion q_geom = tf2::toMsg(q);
+    odom_msg.pose.pose.orientation = q_geom;
+    std::array<double, 36> cov;
+    cov.fill(0.0);
+    odom_msg.pose.covariance = cov;
+    turtlelib::Twist2D vb{0.0, 0.0, 0.0};
+    vb = greenbot.velToTwist(js_green.velocity);
+    odom_msg.twist.twist.linear.x = vb.linearx;
+    odom_msg.twist.twist.linear.y = vb.lineary;
+    odom_msg.twist.twist.linear.z = 0.0;
+    odom_msg.twist.twist.angular.x = 0.0;
+    odom_msg.twist.twist.angular.y = 0.0;
+    odom_msg.twist.twist.angular.z = vb.angular;
+    odom_msg.twist.covariance = cov;
+    return odom_msg;
+  }
+
 };
 
 int main(int argc, char * argv[])
