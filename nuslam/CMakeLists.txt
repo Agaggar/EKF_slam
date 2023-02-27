@@ -25,6 +25,7 @@ find_package(nuturtlebot_msgs REQUIRED)
 find_package(nusim REQUIRED)
 find_package(nuturtle_control REQUIRED)
 find_package(Armadillo)
+find_package(visualization_msgs REQUIRED)
 
 add_executable(slam src/ekf_slam.cpp)
 # target_include_directories(ekf_slam PUBLIC
@@ -44,6 +45,7 @@ ament_target_dependencies(
   nuturtlebot_msgs
   nusim
   nuturtle_control
+  visualization_msgs
 )
 
 target_link_libraries(slam turtlelib::turtlelib)
