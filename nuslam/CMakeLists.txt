@@ -48,9 +48,11 @@ ament_target_dependencies(
   visualization_msgs
   tf2_ros
   tf2
+  Armadillo
 )
 
-target_link_libraries(slam turtlelib::turtlelib)
+include_directories(${ARMADILLO_INCLUDE_DIRS})
+target_link_libraries(slam turtlelib::turtlelib ${ARMADILLO_LIBRARIES})
 
 install(TARGETS slam
   DESTINATION lib/${PROJECT_NAME})
