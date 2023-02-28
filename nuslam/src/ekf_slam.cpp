@@ -337,7 +337,7 @@ class Ekf_slam : public rclcpp::Node
     /// \brief helper function to create Hj
     /// \param j - number of landmark seen
     void populate_Hj(size_t j) {
-      if (j >= poss_obs) {
+      if (j >= ((int) poss_obs)) {
         RCLCPP_INFO(get_logger(), "too many landmarks!");
         rclcpp::shutdown();
       }
