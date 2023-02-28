@@ -120,11 +120,12 @@ class Ekf_slam : public rclcpp::Node
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
     rclcpp::TimerBase::SharedPtr timer;
-    geometry_msgs::msg::TransformStamped t, t_odom_g;
+    geometry_msgs::msg::TransformStamped t_odom_green, t_mo;
+    turtlelib::Transform2D T_mr, T_or, T_mo;
     tf2::Quaternion q;
     sensor_msgs::msg::JointState js_green;
     nav_msgs::msg::Odometry odom_msg;
-    double dxj, dyj, dj;
+    double dxj, dyj, dj, prev_theta;
     int poss_obs = 20; // container for total number of obstacles (used in H)
     
     turtlelib::Twist2D u{0.0, 0.0, 0.0};
@@ -145,39 +146,57 @@ class Ekf_slam : public rclcpp::Node
           // bigAt.set_size(3, 3);
           bigAt.zeros(size(3,3));
         }
-        // Q = arma::eye(3, 3);
-        Q = arma::zeros(3, 3);
+        Q = 0.1 * arma::eye(3, 3);
+        // Q = arma::zeros(3, 3);
         R = arma::eye(2, 2);
         Hj.zeros(2, 3+2*poss_obs);
 
-        t.header.frame_id = "map";
-        t.child_frame_id = "green/odom";
-        t.transform.translation.z = 0.0;
+        t_odom_green.header.frame_id = "green/odom";
+        t_odom_green.child_frame_id = "green/base_footprint";
+        t_odom_green.transform.translation.z = 0.0;
+        t_mo.header.frame_id = "map";
+        t_mo.child_frame_id = "green/odom";
+        t_mo.transform.translation.z = 0.0;
       }
       else {
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         greenbot.fkinematics(std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
+        
+        t_odom_green.header.stamp = get_clock()->now();
+        t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
+        t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
+        prev_theta = greenbot.getCurrentConfig().at(2);
+        q.setRPY(0, 0, prev_theta);
+        t_odom_green.transform.rotation.x = q.x();
+        t_odom_green.transform.rotation.y = q.y();
+        t_odom_green.transform.rotation.z = q.z();
+        t_odom_green.transform.rotation.w = q.w();
+        tf2_rostf_broadcaster->sendTransform(t_odom_green);
+
         dq = {greenbot.getCurrentConfig().at(2) - qt_minusone.at(0), greenbot.getCurrentConfig().at(0) - qt_minusone.at(1), greenbot.getCurrentConfig().at(1) - qt_minusone.at(2)};
         qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
         zeta_minusone = arma::join_cols(qt_minusone, mt_minusone);
-        zeta = arma::join_cols(qt, mt_minusone); // since mt = mt_minusone in our prediction (the landmarks don't move)
+        zeta = arma::join_cols(qt, mt_minusone); // since mt = mt_minusone in our prediction (the landmarks don't_mr move)
         create_At();
         create_cov();
         measurement_model();
         qt = {zeta(0), zeta(1), zeta(2)};
-        greenbot.setCurrentConfig(std::vector<double>{qt(1), qt(2), qt(0)});
+        // greenbot.setCurrentConfig(std::vector<double>{qt(1), qt(2), qt(0)});
         RCLCPP_INFO(get_logger(), "updated zeta, robot state: %.3f, %.3f, %.3f", zeta(0), zeta(1), zeta(2));
       }
-      t.header.stamp = get_clock()->now();
-      t.transform.translation.x = greenbot.getCurrentConfig().at(0);
-      t.transform.translation.y = greenbot.getCurrentConfig().at(1);
-      q.setRPY(0, 0, greenbot.getCurrentConfig().at(2));
-      t.transform.rotation.x = q.x();
-      t.transform.rotation.y = q.y();
-      t.transform.rotation.z = q.z();
-      t.transform.rotation.w = q.w();
-      tf2_rostf_broadcaster->sendTransform(t);
+      T_mr = {turtlelib::Vector2D{qt(1), qt(2)}, qt(0)}; // from slam
+      T_or = {turtlelib::Vector2D{t_odom_green.transform.translation.x, t_odom_green.transform.translation.y}, prev_theta}; // from odom
+      T_mo = T_mr*(T_or.inv());
+      t_mo.header.stamp = get_clock()->now();
+      t_mo.transform.translation.x = T_mo.translation().x;
+      t_mo.transform.translation.y = T_mo.translation().y;
+      q.setRPY(0, 0, T_mo.rotation());
+      t_mo.transform.rotation.x = q.x();
+      t_mo.transform.rotation.y = q.y();
+      t_mo.transform.rotation.z = q.z();
+      t_mo.transform.rotation.w = q.w();
+      tf2_rostf_broadcaster->sendTransform(t_mo);
 
       js_green.header.stamp = get_clock()->now();
       js_green.header.frame_id = "green/base_footprint";
