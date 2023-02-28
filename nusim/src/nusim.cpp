@@ -257,8 +257,7 @@ public:
 private:
   size_t timestep;
   double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
-  std::vector<double> obs_x;
-  std::vector<double> obs_y;
+  std::vector<double> obs_x, obs_y;
   double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range, collision_radius, encoder_ticks_per_rad, motor_cmd_per_rad_sec;
   bool draw_only, collided;
   double angle_min, angle_max, angle_increment, time_increment, scan_time, range_min, range_max, lidar_noise;
@@ -291,6 +290,7 @@ private:
   std::uniform_real_distribution<> unif_dist;
   double relative_x, relative_y, range_lidar;
   sensor_msgs::msg::LaserScan fake_lidar;
+  std::vector<std::vector<double>> poss_collision;
 
   /// \brief Timer callback
   void timer_callback()
@@ -419,7 +419,8 @@ private:
     relative_x = redbot.getCurrentConfig().at(0);
     relative_y = redbot.getCurrentConfig().at(1);
     for (size_t loop = 0; loop < all_cyl.markers.size(); loop++) {
-      if (distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) > max_range) {
+      if (distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) > max_range || 
+          distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) < range_min) {
         measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
       }
       else {
@@ -429,28 +430,71 @@ private:
         measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_position_noise(get_random());
         measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_position_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
+        poss_collision.push_back(std::vector<double>{all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
       }
       if (loop >= (all_cyl.markers.size() - 2)) {
         measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+        poss_collision.push_back(std::vector<double>{all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
       }
     }
   }
 
   /// \brief helper function to simulate lidar values
   void simulate_lidar() {
-    float range_lidar;
-    for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
-      if (measured_cyl.markers.at(loop).action != 2) {
-        range_lidar = distance(x0,
-                               y0,
-                               measured_cyl.markers.at(loop).pose.position.x + gauss_dist_lidar_noise(get_random()),
-                               measured_cyl.markers.at(loop).pose.position.y + gauss_dist_lidar_noise(get_random())
-                               );
-        fake_lidar.ranges.push_back(range_lidar);
-        check_max_range(range_lidar);
+    double meas_samp_x, meas_samp_y;
+    fake_lidar.ranges = std::vector<float>(((size_t) angle_max/angle_increment), 0.0);
+    for (double sample = angle_min; sample < angle_max; sample+=angle_increment) {
+      meas_samp_x = range_max*cos(sample);
+      meas_samp_y = range_max*sin(sample);
+      for (size_t check = 0; check < poss_collision.size(); check++) {
+        check_incidence(x0, y0, meas_samp_x-poss_collision.at(check).at(0), meas_samp_y-poss_collision.at(check).at(1));
+        // for (size_t loop = 0; loop < fake_lidar.ranges.size(); loop++) {
+        //   if (fake_lidar.ranges.at(loop) != 0.0) {
+        //     fake_lidar.ranges.at(loop) += distance(x0, y0, poss_collision.at(check).at(0), poss_collision.at(check).at(1));
+        //   }
+        // }
       }
     }
-    check_dist_to_walls();
+    // for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
+    //   if (measured_cyl.markers.at(loop).action != 2) {
+    //     range_lidar = distance(x0,
+    //                            y0,
+    //                            measured_cyl.markers.at(loop).pose.position.x + gauss_dist_lidar_noise(get_random()),
+    //                            measured_cyl.markers.at(loop).pose.position.y + gauss_dist_lidar_noise(get_random())
+    //                            );
+    //     fake_lidar.ranges.push_back(range_lidar);
+    //     check_max_range(range_lidar);
+    //   }
+    // }
+    // check_dist_to_walls();
+  }
+
+  /// \brief helper function to determine collision
+  /// \param x1 - current point, x
+  /// \param y1 - current point, y
+  /// \param x2 - target point, x
+  /// \param y2 - target point, y
+  void check_incidence(double x1, double y1, double x2, double y2) {
+    double dx, dy, dr, D, disc, x, y;
+    dx = x2 - x1;
+    dy = y2 - y1;
+    dr = sqrt(dx*dx + dy*dy);
+    D = x1*y2 - x2*y1;
+    disc = (cyl_radius*cyl_radius*dr*dr - D*D);
+
+    // tangent
+    x = (-D*dy + std::copysign(1.0, dy)*dx*sqrt(disc))/(dr*dr);
+    y = (-D*dx + std::abs(dy)*sqrt(disc))/(dr*dr);
+    fake_lidar.ranges.push_back(distance(x1, y1, x, y));
+    
+    // incident
+    if (disc > 0) {
+      x = (-D*dy - std::copysign(1.0, dy)*dx*sqrt(disc))/(dr*dr);
+      y = (-D*dx - std::abs(dy)*sqrt(disc))/(dr*dr);
+      fake_lidar.ranges.push_back(distance(x1, y1, x, y));
+
+      // #TODO check to find the closest point
+    }
   }
 
   /// \brief helper function to get distance to each wall
