@@ -151,6 +151,7 @@ class Ekf_slam : public rclcpp::Node
         R = arma::eye(2, 2);
         Hj.zeros(2, 3+2*poss_obs);
 
+        // t_odom_green is done in odometry already, no need ot redo this! (also this is at 5Hz but odometry can do it at 200 Hz)
         t_odom_green.header.frame_id = "green/odom";
         t_odom_green.child_frame_id = "green/base_footprint";
         t_odom_green.transform.translation.z = 0.0;
@@ -183,7 +184,7 @@ class Ekf_slam : public rclcpp::Node
         measurement_model();
         qt = {zeta(0), zeta(1), zeta(2)};
         // greenbot.setCurrentConfig(std::vector<double>{qt(1), qt(2), qt(0)});
-        RCLCPP_INFO(get_logger(), "updated zeta, robot state: %.3f, %.3f, %.3f", zeta(0), zeta(1), zeta(2));
+        // RCLCPP_INFO(get_logger(), "updated zeta, robot state: %.3f, %.3f, %.3f", zeta(0), zeta(1), zeta(2));
       }
       T_mr = {turtlelib::Vector2D{qt(1), qt(2)}, qt(0)}; // from slam
       T_or = {turtlelib::Vector2D{t_odom_green.transform.translation.x, t_odom_green.transform.translation.y}, prev_theta}; // from odom
