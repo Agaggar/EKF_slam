@@ -44,6 +44,7 @@
 #include "tf2/exceptions.h"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "visualization_msgs/msg/marker.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "nav_msgs/msg/odometry.hpp"
 #include <armadillo>
@@ -64,6 +65,8 @@ class Ekf_slam : public rclcpp::Node
       track_width(0.16), 
       motor_cmd_per_rad_sec(1.0 / 0.024), 
       encoder_ticks_per_rad(651.8986),
+      cyl_radius(0.038),
+      cyl_height(0.25),
       greenbot()
     {
       declare_parameter("wheel_radius", rclcpp::ParameterValue(-1.0));
@@ -84,6 +87,10 @@ class Ekf_slam : public rclcpp::Node
         }
       }
 
+      declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius));
+      get_parameter("obstacles.r", cyl_radius);
+      declare_parameter("obstacles.h", rclcpp::ParameterValue(cyl_height));
+      get_parameter("obstacles.h", cyl_height);
       greenbot.setWheelRadius(wheel_radius);
       greenbot.setWheelTrack(track_width);
 
@@ -99,6 +106,7 @@ class Ekf_slam : public rclcpp::Node
       t_listener_og = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
       js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 100);
       odom_pub = create_publisher<nav_msgs::msg::Odometry>("~/odom", 100);
+      map_obs_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/map_obstacles", 5);
       timer = 
         create_wall_timer(
           std::chrono::milliseconds(int(1.0 / rate * 1000)),
@@ -107,15 +115,16 @@ class Ekf_slam : public rclcpp::Node
 
   private:
     double rate;
-    size_t timestep, count;
+    size_t timestep, seen_obs, count;
     vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, rj, phij, m_seen, zjt, zhat_jt, dz;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3);
     mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
     mat Q, Qbar, sys_cov_bar, Hj, Kj, R;
-    double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad;
+    double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad, cyl_radius, cyl_height;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr map_obs_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
@@ -129,7 +138,9 @@ class Ekf_slam : public rclcpp::Node
     sensor_msgs::msg::JointState js_green;
     nav_msgs::msg::Odometry odom_msg;
     double dxj, dyj, dj, prev_theta;
-    int poss_obs = 20; // container for total number of obstacles (used in H)
+    int poss_obs = 20; // container for total possible number of obstacles
+    visualization_msgs::msg::Marker marker;
+    visualization_msgs::msg::MarkerArray all_cyl;
     
     turtlelib::Twist2D u{0.0, 0.0, 0.0};
 
@@ -137,6 +148,9 @@ class Ekf_slam : public rclcpp::Node
     /// \brief main timer callback
     void timer_callback() {
       if (timestep == 0) {
+        seen_obs = 0;
+        count = 0;
+        create_all_cylinders();
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         // RCLCPP_INFO(get_logger(), "state: %f, %f, %f", qt_minusone.at(0), qt_minusone.at(1), qt_minusone.at(2));
         // qt_minusone = qt;
@@ -215,6 +229,9 @@ class Ekf_slam : public rclcpp::Node
       js_pub->publish(js_green);
 
       odom_pub->publish(compute_odom());
+
+      update_all_cylinders();
+      map_obs_pub->publish(all_cyl);
 
       timestep += 1;
     }
@@ -340,6 +357,7 @@ class Ekf_slam : public rclcpp::Node
         sys_cov_bar = (mat(3+2*m_seen.n_elem, 3+2*m_seen.n_elem, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
         // RCLCPP_INFO(get_logger(), "updated zeta: %ld", j);
       }
+      seen_obs = m_seen.n_elem;
 
     }
 
@@ -373,7 +391,7 @@ class Ekf_slam : public rclcpp::Node
       return sqrt(pow((origin_x - point_x), 2.0) + pow((origin_y - point_y), 2.0));
     }
 
-    /// \brief helper function to compute and return an odometry message
+  /// \brief helper function to compute and return an odometry message
   /// \return odometry message
   nav_msgs::msg::Odometry compute_odom()
   {
@@ -402,6 +420,50 @@ class Ekf_slam : public rclcpp::Node
     odom_msg.twist.twist.angular.z = vb.angular;
     odom_msg.twist.covariance = cov;
     return odom_msg;
+  }
+
+  /// \brief Create a single cylinder and add it to a MarkerArray
+  void create_cylinder()
+  {
+    marker.header.frame_id = "nusim/world";
+    marker.header.stamp = get_clock()->now();
+    marker.id = count;
+    marker.type = visualization_msgs::msg::Marker::CYLINDER;
+    if (count < seen_obs) {
+      marker.action = visualization_msgs::msg::Marker::ADD;
+    }
+    else {
+      marker.action = visualization_msgs::msg::Marker::DELETE;
+    }
+    marker.color.a = 1.0;
+    marker.color.r = 120.0 / 256.0;
+    marker.color.g = 149.0 / 256.0;
+    marker.color.b = 131.0 / 256.0;
+    all_cyl.markers.push_back(marker);
+  }
+
+  /// \brief Create all cylinders
+  void create_all_cylinders()
+  {
+    for (int loop = 0; loop < poss_obs; loop++) {
+      create_cylinder();
+      count++;
+    }
+  }
+
+  /// \brief Update positions, timesteps, etc when publishing
+  void update_all_cylinders()
+  {
+    for (size_t loop = 0; loop < seen_obs; loop++) {
+      all_cyl.markers.at(loop).header.stamp = get_clock()->now();
+      all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
+      all_cyl.markers.at(loop).pose.position.x = zeta(qt.n_elem + loop*2);
+      all_cyl.markers.at(loop).pose.position.y = zeta(qt.n_elem + loop*2 + 1);
+      all_cyl.markers.at(loop).pose.position.z = cyl_height / 2.0;
+      all_cyl.markers.at(loop).scale.x = cyl_radius;
+      all_cyl.markers.at(loop).scale.y = cyl_radius;
+      all_cyl.markers.at(loop).scale.z = cyl_height;
+    }
   }
 
 };
