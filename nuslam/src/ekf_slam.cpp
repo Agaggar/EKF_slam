@@ -39,6 +39,9 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+#include "tf2/exceptions.h"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "nav_msgs/msg/path.hpp"
@@ -84,10 +87,6 @@ class Ekf_slam : public rclcpp::Node
       greenbot.setWheelRadius(wheel_radius);
       greenbot.setWheelTrack(track_width);
 
-      // wheel_cmd_sub = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
-      // "~/wheel_cmd", 10, std::bind(
-      //   &Ekf_slam::wheel_cmd_callback, this,
-      //   std::placeholders::_1));
       js_sub = create_subscription<sensor_msgs::msg::JointState>(
         "~/joint_states", 100, std::bind(
         &Ekf_slam::js_callback, this,
@@ -96,6 +95,8 @@ class Ekf_slam : public rclcpp::Node
         "~/fake_sensor", 100, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
       );
       tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+      tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+      t_listener_og = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
       js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 100);
       odom_pub = create_publisher<nav_msgs::msg::Odometry>("~/odom", 100);
       timer = 
@@ -118,6 +119,8 @@ class Ekf_slam : public rclcpp::Node
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
+    std::unique_ptr<tf2_ros::Buffer> tf_buffer;
+    std::shared_ptr<tf2_ros::TransformListener> t_listener_og;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
     rclcpp::TimerBase::SharedPtr timer;
     geometry_msgs::msg::TransformStamped t_odom_green, t_mo;
@@ -138,12 +141,9 @@ class Ekf_slam : public rclcpp::Node
         // RCLCPP_INFO(get_logger(), "state: %f, %f, %f", qt_minusone.at(0), qt_minusone.at(1), qt_minusone.at(2));
         // qt_minusone = qt;
         if (wheel_rad.size() < 2) {
-          // RCLCPP_INFO(get_logger(), "Wheel encoder never set. Defaulting...");
           wheel_rad = {0.0, 0.0};
         }
         if (bigAt.n_elem < 9) {
-          // RCLCPP_INFO(get_logger(), "mt_size: %ld", mt_minusone.at(0).size());
-          // bigAt.set_size(3, 3);
           bigAt.zeros(size(3,3));
         }
         Q = 0.1 * arma::eye(3, 3);
@@ -152,9 +152,9 @@ class Ekf_slam : public rclcpp::Node
         Hj.zeros(2, 3+2*poss_obs);
 
         // t_odom_green is done in odometry already, no need ot redo this! (also this is at 5Hz but odometry can do it at 200 Hz)
-        t_odom_green.header.frame_id = "green/odom";
-        t_odom_green.child_frame_id = "green/base_footprint";
-        t_odom_green.transform.translation.z = 0.0;
+        // t_odom_green.header.frame_id = "green/odom";
+        // t_odom_green.child_frame_id = "green/base_footprint";
+        // t_odom_green.transform.translation.z = 0.0;
         t_mo.header.frame_id = "map";
         t_mo.child_frame_id = "green/odom";
         t_mo.transform.translation.z = 0.0;
@@ -163,16 +163,24 @@ class Ekf_slam : public rclcpp::Node
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         greenbot.fkinematics(std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
         
-        t_odom_green.header.stamp = get_clock()->now();
-        t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
-        t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
-        prev_theta = greenbot.getCurrentConfig().at(2);
-        q.setRPY(0, 0, prev_theta);
-        t_odom_green.transform.rotation.x = q.x();
-        t_odom_green.transform.rotation.y = q.y();
-        t_odom_green.transform.rotation.z = q.z();
-        t_odom_green.transform.rotation.w = q.w();
-        tf2_rostf_broadcaster->sendTransform(t_odom_green);
+        try {
+          t_odom_green = tf_buffer->lookupTransform(
+            "green/odom", "green/base_footprint",
+            tf2::TimePointZero);
+        } catch (const tf2::TransformException & ex) {
+          RCLCPP_INFO(get_logger(), "Could not transform");
+          return;
+        }
+        // t_odom_green.header.stamp = get_clock()->now();
+        // t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
+        // t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
+        // prev_theta = greenbot.getCurrentConfig().at(2);
+        // q.setRPY(0, 0, prev_theta);
+        // t_odom_green.transform.rotation.x = q.x();
+        // t_odom_green.transform.rotation.y = q.y();
+        // t_odom_green.transform.rotation.z = q.z();
+        // t_odom_green.transform.rotation.w = q.w();
+        // tf2_rostf_broadcaster->sendTransform(t_odom_green);
 
         dq = {greenbot.getCurrentConfig().at(2) - qt_minusone.at(0), greenbot.getCurrentConfig().at(0) - qt_minusone.at(1), greenbot.getCurrentConfig().at(1) - qt_minusone.at(2)};
         qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
@@ -338,7 +346,7 @@ class Ekf_slam : public rclcpp::Node
     /// \brief helper function to create Hj
     /// \param j - number of landmark seen
     void populate_Hj(size_t j) {
-      if (j >= ((int) poss_obs)) {
+      if (j >= poss_obs) {
         RCLCPP_INFO(get_logger(), "too many landmarks!");
         rclcpp::shutdown();
       }
