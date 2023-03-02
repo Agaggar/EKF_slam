@@ -9,7 +9,8 @@
     obstacles:
       x: [-0.6, 0.7, 0.5] # x-coordinates of obstacles
       y: [-0.8, -0.7, 0.9] # y-coordinates of obstacles
-      r: 0.038 # m
+      r: 0.038 # m, radius of obstacles
+      h: 0.25 # m, height of obstacles
     draw_only: true # boolean to draw red robot or not
     input_noise: 0.01 # STD_DEV for input noise
     slip_fraction: 0.01 # how much robot slips when following a trajectory

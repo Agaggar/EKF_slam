@@ -154,6 +154,9 @@ public:
     declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius), cyl_radius_param_desc);
     get_parameter("obstacles.r", cyl_radius);
 
+    declare_parameter("obstacles.h", rclcpp::ParameterValue(cyl_height));
+    get_parameter("obstacles.h", cyl_height);
+
     rcl_interfaces::msg::ParameterDescriptor obs_x_param_desc;
     obs_x_param_desc.name = "obstacles.x";
     obs_x_param_desc.type = 8; // double array
@@ -325,7 +328,6 @@ private:
       fake_lidar.range_min = range_min;
       fake_lidar.range_max = range_max;
       fake_lidar.ranges.resize((angle_max - angle_min)/angle_increment + 1);
-
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
