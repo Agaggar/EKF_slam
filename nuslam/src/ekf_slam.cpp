@@ -57,7 +57,7 @@ class Ekf_slam : public rclcpp::Node
   public:
     Ekf_slam():
       Node("slam"),
-      rate(5.0),
+      rate(200.0),
       timestep(0),
       qt(vec(3)),
       qt_minusone(vec(3)),
@@ -67,6 +67,8 @@ class Ekf_slam : public rclcpp::Node
       encoder_ticks_per_rad(651.8986),
       cyl_radius(0.038),
       cyl_height(0.25),
+      q_coeff(0.1),
+      r_coeff(1.0),
       greenbot()
     {
       declare_parameter("wheel_radius", rclcpp::ParameterValue(-1.0));
@@ -91,6 +93,10 @@ class Ekf_slam : public rclcpp::Node
       get_parameter("obstacles.r", cyl_radius);
       declare_parameter("obstacles.h", rclcpp::ParameterValue(cyl_height));
       get_parameter("obstacles.h", cyl_height);
+      declare_parameter("slam.q_coeff", rclcpp::ParameterValue(q_coeff));
+      get_parameter("slam.q_coeff", q_coeff);
+      declare_parameter("slam.r_coeff", rclcpp::ParameterValue(r_coeff));
+      get_parameter("slam.r_coeff", r_coeff);
       greenbot.setWheelRadius(wheel_radius);
       greenbot.setWheelTrack(track_width);
 
@@ -107,6 +113,7 @@ class Ekf_slam : public rclcpp::Node
       js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 100);
       odom_pub = create_publisher<nav_msgs::msg::Odometry>("~/odom", 100);
       map_obs_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/map_obstacles", 5);
+      green_path_pub = create_publisher<nav_msgs::msg::Path>("green/greenpath", 100);
       timer = 
         create_wall_timer(
           std::chrono::milliseconds(int(1.0 / rate * 1000)),
@@ -115,13 +122,13 @@ class Ekf_slam : public rclcpp::Node
 
   private:
     double rate;
-    size_t timestep, seen_obs, count;
-    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, rj, phij, m_seen, zjt, zhat_jt, dz;
+    size_t timestep;
+    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, m_seen, zjt, zhat_jt, dz;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3, arma::fill::zeros);
     mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
-    mat Q, Qbar, sys_cov_bar, Hj, Kj, R;
-    double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad, cyl_radius, cyl_height;
+    mat Q, Qbar, sys_cov_bar, Hj, Kj, R, Rj;
+    double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr map_obs_pub;
@@ -138,103 +145,97 @@ class Ekf_slam : public rclcpp::Node
     sensor_msgs::msg::JointState js_green;
     nav_msgs::msg::Odometry odom_msg;
     double dxj, dyj, dj, prev_theta;
-    int poss_obs = 20; // container for total possible number of obstacles
+    int poss_obs = 5; // container for total possible number of obstacles
     visualization_msgs::msg::Marker marker;
     visualization_msgs::msg::MarkerArray all_cyl;
     bool found = false;
     turtlelib::Twist2D u{0.0, 0.0, 0.0};
-
+    nav_msgs::msg::Path green_path;
+    geometry_msgs::msg::PoseStamped current_point;
+    geometry_msgs::msg::Quaternion q_geom;
+    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr green_path_pub;
 
     /// \brief main timer callback
     void timer_callback() {
       if (timestep == 0) {
-        seen_obs = 0;
-        count = 0;
         create_all_cylinders();
+
+        bigAt.zeros(3+2*poss_obs, 3+2*poss_obs);
+        qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-        // RCLCPP_INFO(get_logger(), "state: %f, %f, %f", qt_minusone.at(0), qt_minusone.at(1), qt_minusone.at(2));
-        // qt_minusone = qt;
-        if (wheel_rad.size() < 2) {
-          wheel_rad = {0.0, 0.0};
+        mt.zeros(2*poss_obs);
+        sys_cov_minusone.zeros(3+2*poss_obs, 3+2*poss_obs);
+        sys_cov_bar.zeros(3+2*poss_obs, 3+2*poss_obs);
+        for (size_t n = 3; n < poss_obs; n++) {
+          sys_cov_minusone(n,n) = 1e6; // large value for unknown diagonal measurements
         }
-        if (bigAt.n_elem < 9) {
-          bigAt.zeros(size(3,3));
+        mt_minusone.zeros(2*poss_obs);
+        m_seen.ones(poss_obs);
+        m_seen = -10*m_seen;
+        Q = q_coeff * arma::eye(3, 3);
+        R = r_coeff * arma::eye(2*poss_obs, 2*poss_obs);
+        Rj = arma::eye(2, 2);
+        Qbar.zeros(3+2*poss_obs, 3+2*poss_obs);
+        for (int n = 0; n < 3; n++) {
+          sys_cov_minusone(n,n) = Q(n,n);
         }
-        Q = 0.1 * arma::eye(3, 3);
-        // Q = arma::zeros(3, 3);
-        R = arma::eye(2, 2);
         Hj.zeros(2, 3+2*poss_obs);
-        // t_odom_green is done in odometry already, no need ot redo this! (also this is at 5Hz but odometry can do it at 200 Hz)
-        // t_odom_green.header.frame_id = "green/odom";
-        // t_odom_green.child_frame_id = "green/base_footprint";
-        // t_odom_green.transform.translation.z = 0.0;
+        zeta = arma::join_cols(qt, arma::vec(2*poss_obs, arma::fill::zeros));
+        dz.zeros(2);
+
         t_mo.header.frame_id = "map";
         t_mo.child_frame_id = "green/odom";
         t_mo.transform.translation.z = 0.0;
-        qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-      }
-      else {
-        // qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-        // greenbot.fkinematics(std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
-        try {
-          qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)}; // current odom
-          t_odom_green = tf_buffer->lookupTransform(
-            "green/odom", "green/base_footprint",
-            tf2::TimePointZero);
-          tf2::convert(t_odom_green.transform.rotation, q);
-          greenbot.setCurrentConfig(
-            std::vector<double>{t_odom_green.transform.translation.x,
-                                t_odom_green.transform.translation.y,
-                                turtlelib::normalize_angle(q.getAngle())});
-          qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-          found = true;
-        } catch (const tf2::TransformException & ex) {
-          RCLCPP_INFO(get_logger(), "Could not transform");
-          return;
-        }
-        // t_odom_green.header.stamp = get_clock()->now();
-        // t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
-        // t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
-        // prev_theta = greenbot.getCurrentConfig().at(2);
-        // q.setRPY(0, 0, prev_theta);
-        // t_odom_green.transform.rotation.x = q.x();
-        // t_odom_green.transform.rotation.y = q.y();
-        // t_odom_green.transform.rotation.z = q.z();
-        // t_odom_green.transform.rotation.w = q.w();
-        // tf2_rostf_broadcaster->sendTransform(t_odom_green);
+        
+        t_odom_green.header.frame_id = "green/odom";
+        t_odom_green.child_frame_id = "green/base_footprint";
+        t_odom_green.transform.translation.z = 0.0;
+        green_path.header.frame_id = "nusim/world";
+        current_point.header.frame_id = "nusim/world";
+        current_point.pose.position.z = 0.0;
 
-        // REPLACE greenbot.getCurrentConfig().at(2) with q.getAngle()
-        // REPLACE greenbot.getCurrentConfig().at(0) with t_odom_green.transform.translation.x
-        // REPLACE greenbot.getCurrentConfig().at(1) with t_odom_green.transform.translation.y
-        // dq = {greenbot.getCurrentConfig().at(2) - qt_minusone.at(0), greenbot.getCurrentConfig().at(0) - qt_minusone.at(1), greenbot.getCurrentConfig().at(1) - qt_minusone.at(2)};
-        // qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
-        // qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)}; // current odom
-        dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
-        create_At();
-        zeta_minusone = arma::join_cols(qt_minusone, mt_minusone);
-        zeta = arma::join_cols(qt, mt_minusone); // since mt = mt_minusone in our prediction (the landmarks don't_mr move)
-        create_cov();
-        measurement_model();
-        qt = {zeta(0), zeta(1), zeta(2)};
-        // greenbot.setCurrentConfig(std::vector<double>{qt(1), qt(2), qt(0)});
-        // RCLCPP_INFO(get_logger(), "updated zeta, robot state: %.3f, %.3f, %.3f", zeta(0), zeta(1), zeta(2));
+        if (wheel_rad.size() < 2) {
+          wheel_rad = {0.0, 0.0};
+        }
       }
-      if (found){
-        T_mr = {turtlelib::Vector2D{qt(1), qt(2)}, qt(0)}; // from slam
-        T_or = {turtlelib::Vector2D{t_odom_green.transform.translation.x, t_odom_green.transform.translation.y}, prev_theta}; // from odom
-        T_mo = T_mr*(T_or.inv());
-        RCLCPP_INFO(get_logger(), "updated zeta, robot state: %.3f, %.3f, %.3f", zeta(0), zeta(1), zeta(2));
-        RCLCPP_INFO(get_logger(), "green rot: %.2f", T_mo.rotation());
-        t_mo.header.stamp = get_clock()->now();
-        t_mo.transform.translation.x = T_mo.translation().x;
-        t_mo.transform.translation.y = T_mo.translation().y;
-        q.setRPY(0, 0, T_mo.rotation());
-        t_mo.transform.rotation.x = q.x();
-        t_mo.transform.rotation.y = q.y();
-        t_mo.transform.rotation.z = q.z();
-        t_mo.transform.rotation.w = q.w();
-        tf2_rostf_broadcaster->sendTransform(t_mo);
+      t_odom_green.header.stamp = get_clock()->now();
+      t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
+      t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
+      tf2::Quaternion q;
+      prev_theta = greenbot.getCurrentConfig().at(2);
+      q.setRPY(0, 0, greenbot.getCurrentConfig().at(2));
+      q.normalize();
+      q_geom = tf2::toMsg(q);
+      t_odom_green.transform.rotation = q_geom;
+
+      if (timestep % 50 == 0) {
+        green_path.header.stamp = get_clock()->now();
+        current_point.header.stamp = get_clock()->now();
+        current_point.pose.position.x = greenbot.getCurrentConfig().at(0);
+        current_point.pose.position.y = greenbot.getCurrentConfig().at(1);
+        green_path.poses.push_back(current_point);
+        green_path_pub->publish(green_path);
       }
+
+      tf2_rostf_broadcaster->sendTransform(t_odom_green);
+      odom_pub->publish(compute_odom());
+      
+      T_mr = {turtlelib::Vector2D{qt(1), qt(2)}, qt(0)}; // from slam
+      T_or = {turtlelib::Vector2D{t_odom_green.transform.translation.x, t_odom_green.transform.translation.y}, prev_theta}; // from odom
+      T_mo = T_mr*(T_or.inv());
+      if (timestep%40 == 0) {
+        RCLCPP_INFO(get_logger(), "gre robot state: %.3f, %.3f, %.3f", qt_minusone(0), qt_minusone(1), qt_minusone(2));
+      }
+      // RCLCPP_INFO(get_logger(), "green rot: no normal: %.2f; normal: %.2f", T_mo.rotation(), turtlelib::normalize_angle(T_mo.rotation()));
+      t_mo.header.stamp = get_clock()->now();
+      t_mo.transform.translation.x = T_mo.translation().x;
+      t_mo.transform.translation.y = T_mo.translation().y;
+      q.setRPY(0, 0, turtlelib::normalize_angle(T_mo.rotation()));
+      t_mo.transform.rotation.x = q.x();
+      t_mo.transform.rotation.y = q.y();
+      t_mo.transform.rotation.z = q.z();
+      t_mo.transform.rotation.w = q.w();
+      tf2_rostf_broadcaster->sendTransform(t_mo);
 
       js_green.header.stamp = get_clock()->now();
       js_green.header.frame_id = "green/base_footprint";
@@ -251,139 +252,94 @@ class Ekf_slam : public rclcpp::Node
       timestep += 1;
     }
 
-    /// \brief sensor data callback
+    /// \brief sensor data callback at 200 Hz
     /// \param sd - sensor data input
     void js_callback(sensor_msgs::msg::JointState js) {
-      wheel_rad = {js.position.at(0), js.position.at(1)};
-      // in here, convert change in encoder to a twist somehow
+      if ((js.position.size() > 1)) {
+        wheel_rad = {js.position.at(0), js.position.at(1)};
+        greenbot.fkinematics(std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
+        }
+      qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)}; // current odom        
     }
 
-    /// \brief obstacle marker callback
+    /// \brief obstacle marker callback at 5 Hz
     /// \param obs - obstacle array as published in nusim rviz
     void fake_sensor_callback(visualization_msgs::msg::MarkerArray obs) {
-      count = 0;
+      zeta = arma::join_cols(qt, mt_minusone);
+      dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
+      create_At();
+      RCLCPP_ERROR_STREAM(get_logger(), "bigAt: \n" << bigAt);
+      // zeta_minusone = arma::join_cols(qt_minusone, mt_minusone);
+      create_cov();
+      RCLCPP_ERROR_STREAM(get_logger(), "covariance: \n" << sys_cov_bar);
+      
       for (size_t loop=0; loop < obs.markers.size(); loop++) {
         if (obs.markers.at(loop).action != 2) {
-          count++;
+          // during correction, do we add relative x and y to mt_minusone?
+          rj = distance(0.0, 0.0, obs.markers.at(loop).pose.position.x, obs.markers.at(loop).pose.position.y);
+          phij = turtlelib::normalize_angle(atan2(obs.markers.at(loop).pose.position.y, obs.markers.at(loop).pose.position.x));
+          if (m_seen.at(loop) != obs.markers.at(loop).id) {
+            m_seen(loop) = obs.markers.at(loop).id;
+            mt_minusone(2*loop) = zeta(1) + rj*cos(phij + zeta(0)); // update measured landmark x
+            mt_minusone(2*loop + 1) = zeta(2) + rj*sin(phij + zeta(0)); // update measured landmark y
+          }
+          zjt = {rj, phij};
+          measurement_model(loop);
         }
       }
-      if (mt_minusone.n_elem != 2*count) {
-        // mt_minusone.set_size(2*count);
-        mt_minusone.zeros(2*count);
-      }
-      if (rj.n_elem != count) {
-        // rj.set_size(count);
-        rj.zeros(2*count);
-      }
-      if (phij.n_elem != count) {
-        // phij.set_size(count);
-        phij.zeros(2*count);
-      }
-      if (m_seen.n_elem != count) {
-        // m_seen.set_size(count);
-        m_seen.zeros(count);
-      }
-      count = 0;
-      for (size_t loop=0; loop < obs.markers.size(); loop++) {
-        if (obs.markers.at(loop).action != 2) {
-          mt_minusone(2*count) = (obs.markers.at(loop).pose.position.x);
-          mt_minusone(2*count + 1) = (obs.markers.at(loop).pose.position.y);
-          // if seen, else
-          if (turtlelib::almost_equal(rj(count), distance(0.0, 0.0, mt_minusone(2*count), mt_minusone(2*count + 1)), 0.01) &&
-              turtlelib::almost_equal(phij(count), turtlelib::normalize_angle(atan2(mt_minusone(2*count + 1), mt_minusone(2*count))))) {
-                m_seen(count) = 1;
-          }
-          else {
-            rj(count) = distance(0.0, 0.0, mt_minusone(2*count), mt_minusone(2*count + 1));
-            phij(count) = turtlelib::normalize_angle(atan2(mt_minusone(2*count + 1), mt_minusone(2*count)));
-            m_seen(count) = 0;
-          }
-          count++;
-        }
-      }
-      zjt = arma::join_cols(rj, phij);
-      zhat_jt = arma::join_cols(rj, phij); // this will be later updated, but for now it's the same size as zjt
-      if (bigAt.n_elem != (3+2*count)*(3+2*count)) {
-        // bigAt.set_size(3+2*count, 3+2*count);
-        bigAt.zeros(3+2*count, 3+2*count);
-        RCLCPP_INFO(get_logger(), "bigAt resize: %lld", bigAt.n_rows);
-      }
+
+      qt_minusone = {zeta(0), zeta(1), zeta(2)};
+      RCLCPP_ERROR_STREAM(get_logger(), "new zeta: \n" << qt_minusone);
+      greenbot.setCurrentConfig(std::vector<double>{qt_minusone(1), qt_minusone(2), qt_minusone(0)});
 
     }
 
     /// \brief helper function to create framework for bigAt
     void create_At() {
       bigAt.eye();
-      bigAt.at(1, 1) = -dq.at(2);
-      bigAt.at(2, 1) = dq.at(1);
-      // create Qbar, if new landmarks are found (including at t=0)
-      if (Qbar.n_elem != bigAt.n_elem) {
-        Qbar = mat(bigAt.n_rows, bigAt.n_cols, arma::fill::zeros);
-        for (int i = 0; i < 3; i++) {
-          for (int j = 0; i < 3; i++) {
-            Qbar(i, j) = Q(i, j);
-          }
-        }
-      }
+      bigAt.at(1, 0) += -dq.at(2);
+      bigAt.at(2, 0) += dq.at(1);
+      // // create Qbar, if new landmarks are found (including at t=0)
+      // if (Qbar.n_elem != bigAt.n_elem) {
+      //   Qbar = mat(bigAt.n_rows, bigAt.n_cols, arma::fill::zeros);
+      //   for (int i = 0; i < 3; i++) {
+      //     for (int j = 0; i < 3; i++) {
+      //       Qbar(i, j) = Q(i, j);
+      //     }
+      //   }
+      // }
     }
 
     /// \brief helper function to create system covariance matrix 
     void create_cov() {
-      if (sys_cov_minusone.n_elem != bigAt.n_elem) {
-        // initialize new landmarks 
-        size_t old_n = sys_cov_minusone.n_rows;
-        sys_cov_minusone.zeros(3+mt_minusone.n_elem, 3+mt_minusone.n_elem);
-        for (size_t n = old_n; n < mt_minusone.n_elem/2; n++) {
-          sys_cov_minusone(3+n,3+n) = 100000; // large value for unknown diagonal measurements
-        }
-        sys_cov_bar = sys_cov_minusone;
-      }
-      for (size_t i = 0; i < bigAt.n_rows; i++) {
-        for (size_t j = 0; j < bigAt.n_cols; j++) {
-          // RCLCPP_INFO(get_logger(), "diag A, %f, cov: %f, Qbar: %f", bigAt(i, j), sys_cov_minusone(i, j), Qbar(i, j));
-        }
-      }
-      // RCLCPP_INFO(get_logger(), "diag A, %lld, cov: %lld, Qbar: %lld", bigAt.n_elem, sys_cov_minusone.n_elem, Qbar.n_elem);
       sys_cov_bar = bigAt * sys_cov_minusone * bigAt.t() + Qbar;
+      sys_cov_minusone = sys_cov_bar;
     }
 
     /// \brief function to create measurement model
-    void measurement_model() {
-      for (size_t j = 0; j < m_seen.n_elem; j++) {
-        if (!m_seen(j)) {
-          zeta(3+2*j) = zeta(1) + rj(j)*cos(phij(j) + zeta(0)); // update measured landmark x
-          zeta(3+2*j+1) = zeta(2) + rj(j)*sin(phij(j) + zeta(0)); // update measured landmark y
-        }
-        dxj =  zeta(3+2*j) - zeta(1);
-        dyj = zeta(3+2*j+1) - zeta(2);
-        dj = dxj*dxj + dyj*dyj;
-        zhat_jt(j) =  sqrt(dj);
-        zhat_jt(j + m_seen.n_elem) = turtlelib::normalize_angle(atan2(dyj, dxj) - zeta(0)); 
-        Hj.zeros(2, 3+2*m_seen.n_elem);
-        // should never be called if measurements don't exist
-        populate_Hj(j);
-        Kj.zeros(3, 2+2*m_seen.n_elem);
-        Kj = sys_cov_bar*Hj.t()*((Hj*sys_cov_bar*Hj.t() + R).i());
-        // RCLCPP_INFO(get_logger(), "KJ, %lld, %lld", Kj.n_rows, Kj.n_cols);
-        dz.zeros(2, 1);
-        dz(0) = zhat_jt(j) - zjt(j);
-        dz(1) = zhat_jt(j+m_seen.n_elem) - zjt(j+m_seen.n_elem);
-        zeta = zeta + Kj*dz;
-        sys_cov_bar = (mat(3+2*m_seen.n_elem, 3+2*m_seen.n_elem, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
-        // RCLCPP_INFO(get_logger(), "updated zeta: %ld", j);
-      }
-      seen_obs = m_seen.n_elem;
-
+    void measurement_model(size_t j) {
+      dxj =  mt_minusone(2*j) - zeta(1);
+      dyj =  mt_minusone(2*j + 1) - zeta(2);
+      dj = dxj*dxj + dyj*dyj;
+      zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta(0))}; 
+      Hj.zeros(2, 3+2*poss_obs);
+      populate_Hj(j);
+      Kj.zeros(3, 2+2*poss_obs);
+      Rj(0, 0) = R(2*j, 2*j);
+      Rj(0, 1) = R(2*j, 2*j+1);
+      Rj(1, 0) = R(2*j+1, 2*j);
+      Rj(1, 1) = R(2*j+1, 2*j+1);
+      Kj = sys_cov_bar*Hj.t()*((Hj*sys_cov_bar*Hj.t() + Rj).i());
+      RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
+      dz = zhat_jt - zjt;
+      zeta = zeta + Kj*dz;
+      sys_cov_bar = (mat(3+2*m_seen.n_elem, 3+2*m_seen.n_elem, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+      RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
     }
 
     /// \brief helper function to create Hj
     /// \param j - number of landmark seen
     void populate_Hj(size_t j) {
-      if (j >= poss_obs) {
-        RCLCPP_INFO(get_logger(), "too many landmarks!");
-        rclcpp::shutdown();
-      }
-      Hj(0, 0) = 0;
       Hj(0, 1) = -dxj/sqrt(dj);
       Hj(0, 2) = -dyj/sqrt(dj);
       Hj(1, 0) = -1;
@@ -391,7 +347,7 @@ class Ekf_slam : public rclcpp::Node
       Hj(1, 2) = -dxj/dj;
 
       Hj(0, 3+2*j) = dxj/sqrt(dj);
-      Hj(1, 3+2*j+1) = dyj/sqrt(dj);;
+      Hj(1, 3+2*j+1) = dyj/sqrt(dj);
       Hj(0, 3+2*j) = -dyj/dj;
       Hj(1, 3+2*j+1) = dxj/dj;
     }
@@ -426,7 +382,9 @@ class Ekf_slam : public rclcpp::Node
     cov.fill(0.0);
     odom_msg.pose.covariance = cov;
     turtlelib::Twist2D vb{0.0, 0.0, 0.0};
-    vb = greenbot.velToTwist(js_green.velocity);
+    if ((js_green.velocity.size() > 0)) {
+      vb = greenbot.velToTwist(js_green.velocity);
+    }
     odom_msg.twist.twist.linear.x = vb.linearx;
     odom_msg.twist.twist.linear.y = vb.lineary;
     odom_msg.twist.twist.linear.z = 0.0;
@@ -438,13 +396,14 @@ class Ekf_slam : public rclcpp::Node
   }
 
   /// \brief Create a single cylinder and add it to a MarkerArray
-  void create_cylinder()
+  /// \param loop - landmark number
+  void create_cylinder(int loop)
   {
     marker.header.frame_id = "nusim/world";
     marker.header.stamp = get_clock()->now();
-    marker.id = count;
+    marker.id = loop;
     marker.type = visualization_msgs::msg::Marker::CYLINDER;
-    if (count < seen_obs) {
+    if ((m_seen(loop) >= 0.0)) {
       marker.action = visualization_msgs::msg::Marker::ADD;
     }
     else {
@@ -454,6 +413,10 @@ class Ekf_slam : public rclcpp::Node
     marker.color.r = 120.0 / 256.0;
     marker.color.g = 149.0 / 256.0;
     marker.color.b = 131.0 / 256.0;
+    marker.scale.x = cyl_radius;
+    marker.scale.y = cyl_radius;
+    marker.scale.z = cyl_height;
+    marker.pose.position.z = cyl_height / 2.0;
     all_cyl.markers.push_back(marker);
   }
 
@@ -461,23 +424,24 @@ class Ekf_slam : public rclcpp::Node
   void create_all_cylinders()
   {
     for (int loop = 0; loop < poss_obs; loop++) {
-      create_cylinder();
-      // count++;
+      create_cylinder(loop);
     }
   }
 
   /// \brief Update positions, timesteps, etc when publishing
   void update_all_cylinders()
   {
-    for (size_t loop = 0; loop < seen_obs; loop++) {
+    for (size_t loop = 0; loop < poss_obs; loop++) {
       all_cyl.markers.at(loop).header.stamp = get_clock()->now();
-      all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
-      all_cyl.markers.at(loop).pose.position.x = zeta(qt.n_elem + loop*2);
-      all_cyl.markers.at(loop).pose.position.y = zeta(qt.n_elem + loop*2 + 1);
-      all_cyl.markers.at(loop).pose.position.z = cyl_height / 2.0;
-      all_cyl.markers.at(loop).scale.x = cyl_radius;
-      all_cyl.markers.at(loop).scale.y = cyl_radius;
-      all_cyl.markers.at(loop).scale.z = cyl_height;
+      if ((mt_minusone(2*loop) != 0.0) && (mt_minusone(2*loop+1) != 0.0)) {
+        all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
+        all_cyl.markers.at(loop).pose.position.x = zeta(qt.n_elem + loop*2);
+        all_cyl.markers.at(loop).pose.position.y = zeta(qt.n_elem + loop*2 + 1);
+      }
+      else {
+        all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+      }
+      // all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
     }
   }
 
