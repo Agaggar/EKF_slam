@@ -288,9 +288,11 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr red_path_pub;
   std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_position_noise, gauss_dist_lidar_noise;
   std::uniform_real_distribution<> unif_dist;
-  double relative_x, relative_y, range_lidar, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y;
+  double relative_x, relative_y, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y;
   sensor_msgs::msg::LaserScan fake_lidar;
   std::vector<std::vector<double>> poss_collision;
+  std::vector<float> range_lidar;
+  int count = 0;
 
   /// \brief Timer callback
   void timer_callback()
@@ -322,6 +324,7 @@ private:
       fake_lidar.scan_time = scan_time;
       fake_lidar.range_min = range_min;
       fake_lidar.range_max = range_max;
+      fake_lidar.ranges.resize((angle_max - angle_min)/angle_increment + 1);
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
@@ -364,7 +367,7 @@ private:
     //   fake_lidar.ranges.pop_back();
     // }
     fake_sensor_pub->publish(measured_cyl);
-    fake_lidar.header.stamp = get_clock()->now() - std::chrono::milliseconds(fake_lidar.ranges.size()*10/5);
+    fake_lidar.header.stamp = get_clock()->now(); // - std::chrono::milliseconds(fake_lidar.ranges.size()*10/5);
     laser_scan_pub->publish(fake_lidar);
   }
 
@@ -441,20 +444,27 @@ private:
 
   /// \brief helper function to simulate lidar values
   void simulate_lidar() {
-    RCLCPP_INFO(get_logger(), "len of sim lidar: %ld", fake_lidar.ranges.size());
+    // RCLCPP_INFO(get_logger(), "len of sim lidar: %ld", fake_lidar.ranges.size());
     fake_lidar.ranges.clear();
+    count = 0;
+    // std::fill(fake_lidar.ranges.begin(), fake_lidar.ranges.end(), 0.0);
     for (double sample = angle_min; sample < angle_max; sample+=angle_increment) {
+      // RCLCPP_INFO(get_logger(), "hi %d", count);
+      range_lidar.clear();
       meas_samp_x = range_max*cos(theta0 + sample);
       meas_samp_y = range_max*sin(theta0 + sample);
       // check dist to walls
       for (size_t check = 0; check < (walls_x.points.size() + walls_y.points.size()); check++) {
-        check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), wall_thickness);
+        range_lidar.push_back(
+          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), wall_thickness));
       }
       // check dist to obstacles
       for (size_t check = (walls_x.points.size() + walls_y.points.size()); check < poss_collision.size(); check++) {
-        check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), cyl_radius);
+        range_lidar.push_back(
+          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), cyl_radius));
       }
-
+      fake_lidar.ranges.push_back(*std::min_element(range_lidar.begin(), range_lidar.end()));
+      count++;
     }
   }
 
@@ -466,7 +476,8 @@ private:
   /// \param obs_x - obstacle x
   /// \param obs_x - obstacle x
   /// \param r - obstacle radius
-  void check_incidence(double Rx, double Ry, double Mx, double My, double obs_x, double obs_y, double r) {
+  /// \return distance to obstacle
+  float check_incidence(double Rx, double Ry, double Mx, double My, double obs_x, double obs_y, double r) {
     a = 1 + (My-Ry)/(Mx-Rx)*(My-Ry)/(Mx-Rx);
     b = -2 * (obs_x + ((My-Ry)/(Mx-Rx)*Rx - Ry + obs_y) * (My-Ry)/(Mx-Rx));
     c = (obs_x*obs_x - r*r + ((My-Ry)/(Mx-Rx)*Rx - Ry + obs_y)*((My-Ry)/(Mx-Rx)*Rx - Ry + obs_y));
@@ -479,28 +490,25 @@ private:
       y_int1 = (My-Ry)/(Mx-Rx) * (x_int1-Rx) + Ry;
       // reuse doubles a and b to save runtime
       a = distance(Rx, Ry, x_int1, y_int1);
-      if (disc > 0.001) {
+      if (disc >= 0.001) {
         x_int2 = (-b - sqrt(disc))/(2*a);
         y_int2 = (My-Ry)/(Mx-Rx) * (x_int1-Rx) + Ry;
         b = distance(Rx, Ry, x_int2, y_int2);
         if (b < max_range) {
           if (b > a) {
-            fake_lidar.ranges.push_back(b);
-            RCLCPP_INFO(get_logger(), "point 2: %.2f", b);
+            return b;
+            // fake_lidar.ranges.push_back(b);
+            // RCLCPP_INFO(get_logger(), "point 2: %.2f", b);
           }
           else if (a < max_range) {
-            fake_lidar.ranges.push_back(a);
-            RCLCPP_INFO(get_logger(), "point 1: %.2f", a);
+            return a;
+            // fake_lidar.ranges.push_back(a);
+            // RCLCPP_INFO(get_logger(), "point 1: %.2f", a);
           }
-        }
-      }
-      else {
-        if (a < max_range) {
-          fake_lidar.ranges.push_back(a);
-          RCLCPP_INFO(get_logger(), "point 0: %.2f", a); 
         }
       }
     }
+    return 0.0;
   }
 
   /// \brief Reset timestep by listening to reset service
