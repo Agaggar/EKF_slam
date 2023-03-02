@@ -54,11 +54,6 @@
             <arg name="use_jsp" value="false"/>
         </include>
 
-        <node pkg="nuturtle_control" exec="odometry"
-            args="--ros-args -p body_id:='green/base_footprint' -p odom_id:='green/odom' -p wheel_left:='wheel_left_joint' -p wheel_right:='wheel_right_joint' -p pub_odom:='false' -r __node:=slam_odom" >
-            <remap from="/blue/joint_states" to="green/joint_states" />
-        </node>
-
     </group>
 
     <group if="$(eval '\'$(var robot)\' == \'none\'')" >
