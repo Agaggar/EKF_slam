@@ -221,9 +221,9 @@ public:
     declare_parameter("lidar_noise", rclcpp::ParameterValue(lidar_noise));
     get_parameter("lidar_noise", lidar_noise);
 
-    gauss_dist_vel_noise = std::normal_distribution<>{0.0, sqrt(input_noise)};
-    gauss_dist_position_noise = std::normal_distribution<>{0.0, sqrt(basic_sensor_variance)};
-    gauss_dist_lidar_noise = std::normal_distribution<>{0.0, sqrt(lidar_noise)};
+    gauss_dist_vel_noise = std::normal_distribution<>{0.0, (input_noise)};
+    gauss_dist_obstacle_noise = std::normal_distribution<>{0.0, (basic_sensor_variance)};
+    gauss_dist_lidar_noise = std::normal_distribution<>{0.0, (lidar_noise)};
     unif_dist = std::uniform_real_distribution<>{-slip_fraction, slip_fraction};
     collided = false;
 
@@ -286,7 +286,7 @@ private:
   nav_msgs::msg::Path red_path;
   geometry_msgs::msg::PoseStamped current_point;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr red_path_pub;
-  std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_position_noise, gauss_dist_lidar_noise;
+  std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_obstacle_noise, gauss_dist_lidar_noise;
   std::uniform_real_distribution<> unif_dist;
   double relative_x, relative_y, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y, d1, d2;
   sensor_msgs::msg::LaserScan fake_lidar;
@@ -325,6 +325,7 @@ private:
       fake_lidar.range_min = range_min;
       fake_lidar.range_max = range_max;
       fake_lidar.ranges.resize((angle_max - angle_min)/angle_increment + 1);
+
     }
     ts.data = timestep;
     timestep_pub_->publish(ts);
@@ -362,9 +363,6 @@ private:
   void fake_sensor_timer() {
     cylinders_as_measured();
     simulate_lidar();
-    // while (fake_lidar.ranges.size() > 720) {
-    //   fake_lidar.ranges.pop_back();
-    // }
     fake_sensor_pub->publish(measured_cyl);
     fake_lidar.header.stamp = get_clock()->now() - std::chrono::milliseconds(200); //- std::chrono::milliseconds(fake_lidar.ranges.size()*10/5);
     laser_scan_pub->publish(fake_lidar);
@@ -429,8 +427,8 @@ private:
         measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
         relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
         relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
-        measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_position_noise(get_random());
-        measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_position_noise(get_random());
+        measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_obstacle_noise(get_random());
+        measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_obstacle_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
       }
       if (loop >= (all_cyl.markers.size() - 2)) {

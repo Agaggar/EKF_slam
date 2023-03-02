@@ -11,7 +11,7 @@
       y: [-0.8, -0.7, 0.9] # y-coordinates of obstacles
       r: 0.038 # m
     draw_only: true # boolean to draw red robot or not
-    input_noise: 0.001 # variance for input noise
+    input_noise: 0.01 # STD_DEV for input noise
     slip_fraction: 0.01 # how much robot slips when following a trajectory
-    basic_sensor_variance: 0.001 # variance for sensor
+    basic_sensor_variance: 0.01 # STD_DEV for sensor
     max_range: 0.5 # max range of sensor
