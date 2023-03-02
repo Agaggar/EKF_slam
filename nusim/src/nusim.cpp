@@ -362,7 +362,6 @@ private:
   void fake_sensor_timer() {
     cylinders_as_measured();
     simulate_lidar();
-    // RCLCPP_INFO(get_logger(), "len of sim lidar: %ld", fake_lidar.ranges.size());
     // while (fake_lidar.ranges.size() > 720) {
     //   fake_lidar.ranges.pop_back();
     // }
@@ -421,7 +420,6 @@ private:
     measured_cyl = all_cyl;
     relative_x = redbot.getCurrentConfig().at(0);
     relative_y = redbot.getCurrentConfig().at(1);
-    poss_collision.resize(walls_x.points.size() + walls_y.points.size());
     for (size_t loop = 0; loop < all_cyl.markers.size(); loop++) {
       if (distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) > max_range || 
           distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) < range_min) {
@@ -434,7 +432,6 @@ private:
         measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_position_noise(get_random());
         measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_position_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
-        // poss_collision.push_back(std::vector<double>{all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
       }
       if (loop >= (all_cyl.markers.size() - 2)) {
         measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
@@ -452,15 +449,13 @@ private:
       // check dist to walls
       for (size_t check = 0; check < (walls_x.points.size() + walls_y.points.size()); check++) {
         range_lidar.push_back(
-          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), 0.0));
+          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), wall_thickness));
       }
-      RCLCPP_INFO(get_logger(), "size before obs: %ld", range_lidar.size());
       // check dist to obstacles
       for (size_t check = (walls_x.points.size() + walls_y.points.size()); check < poss_collision.size(); check++) {
         range_lidar.push_back(
           check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), cyl_radius));
       }
-      RCLCPP_INFO(get_logger(), "size after obs: %ld", range_lidar.size());
       range_lidar.at(0) = *std::min_element(range_lidar.begin(), range_lidar.end());
       if (range_lidar.at(0) < max_range){
         fake_lidar.ranges.push_back(range_lidar.at(0));
@@ -582,10 +577,10 @@ private:
     marker_id += 1;
 
     for (size_t loop = 0; loop < walls_x.points.size(); loop++) {
-      poss_collision.push_back(std::vector<double>{walls_x.points.at(loop).x - wall_thickness/2.0, walls_x.points.at(loop).y});
+      poss_collision.push_back(std::vector<double>{walls_x.points.at(loop).x, walls_x.points.at(loop).y});
     }
     for (size_t loop = 0; loop < walls_y.points.size(); loop++) {
-      poss_collision.push_back(std::vector<double>{walls_y.points.at(loop).x, walls_y.points.at(loop).y - wall_thickness/2.0});
+      poss_collision.push_back(std::vector<double>{walls_y.points.at(loop).x, walls_y.points.at(loop).y });
     }
   }
 
