@@ -288,7 +288,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr red_path_pub;
   std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_position_noise, gauss_dist_lidar_noise;
   std::uniform_real_distribution<> unif_dist;
-  double relative_x, relative_y, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y;
+  double relative_x, relative_y, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y, d1, d2;
   sensor_msgs::msg::LaserScan fake_lidar;
   std::vector<std::vector<double>> poss_collision;
   std::vector<float> range_lidar;
@@ -367,7 +367,7 @@ private:
     //   fake_lidar.ranges.pop_back();
     // }
     fake_sensor_pub->publish(measured_cyl);
-    fake_lidar.header.stamp = get_clock()->now(); // - std::chrono::milliseconds(fake_lidar.ranges.size()*10/5);
+    fake_lidar.header.stamp = get_clock()->now() - std::chrono::milliseconds(200); //- std::chrono::milliseconds(fake_lidar.ranges.size()*10/5);
     laser_scan_pub->publish(fake_lidar);
   }
 
@@ -434,7 +434,7 @@ private:
         measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_position_noise(get_random());
         measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_position_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
-        poss_collision.push_back(std::vector<double>{all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
+        // poss_collision.push_back(std::vector<double>{all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
       }
       if (loop >= (all_cyl.markers.size() - 2)) {
         measured_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
@@ -444,27 +444,30 @@ private:
 
   /// \brief helper function to simulate lidar values
   void simulate_lidar() {
-    // RCLCPP_INFO(get_logger(), "len of sim lidar: %ld", fake_lidar.ranges.size());
     fake_lidar.ranges.clear();
-    count = 0;
-    // std::fill(fake_lidar.ranges.begin(), fake_lidar.ranges.end(), 0.0);
     for (double sample = angle_min; sample < angle_max; sample+=angle_increment) {
-      // RCLCPP_INFO(get_logger(), "hi %d", count);
       range_lidar.clear();
-      meas_samp_x = range_max*cos(theta0 + sample);
-      meas_samp_y = range_max*sin(theta0 + sample);
+      meas_samp_x = x0 + range_max*cos(theta0 + sample);
+      meas_samp_y = y0 + range_max*sin(theta0 + sample);
       // check dist to walls
       for (size_t check = 0; check < (walls_x.points.size() + walls_y.points.size()); check++) {
         range_lidar.push_back(
-          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), wall_thickness));
+          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), 0.0));
       }
+      RCLCPP_INFO(get_logger(), "size before obs: %ld", range_lidar.size());
       // check dist to obstacles
       for (size_t check = (walls_x.points.size() + walls_y.points.size()); check < poss_collision.size(); check++) {
         range_lidar.push_back(
           check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), cyl_radius));
       }
-      fake_lidar.ranges.push_back(*std::min_element(range_lidar.begin(), range_lidar.end()));
-      count++;
+      RCLCPP_INFO(get_logger(), "size after obs: %ld", range_lidar.size());
+      range_lidar.at(0) = *std::min_element(range_lidar.begin(), range_lidar.end());
+      if (range_lidar.at(0) < max_range){
+        fake_lidar.ranges.push_back(range_lidar.at(0));
+      }
+      else {
+        fake_lidar.ranges.push_back(0.0);
+      }
     }
   }
 
@@ -474,12 +477,12 @@ private:
   /// \param Mx - target point, x
   /// \param My - target point, y
   /// \param obs_x - obstacle x
-  /// \param obs_x - obstacle x
+  /// \param obs_y - obstacle y
   /// \param r - obstacle radius
   /// \return distance to obstacle
   float check_incidence(double Rx, double Ry, double Mx, double My, double obs_x, double obs_y, double r) {
     a = 1 + (My-Ry)/(Mx-Rx)*(My-Ry)/(Mx-Rx);
-    b = -2 * (obs_x + ((My-Ry)/(Mx-Rx)*Rx - Ry + obs_y) * (My-Ry)/(Mx-Rx));
+    b = 2 * (-obs_x + (-(My-Ry)/(Mx-Rx)*Rx + Ry - obs_y) * (My-Ry)/(Mx-Rx));
     c = (obs_x*obs_x - r*r + ((My-Ry)/(Mx-Rx)*Rx - Ry + obs_y)*((My-Ry)/(Mx-Rx)*Rx - Ry + obs_y));
     disc = b*b - 4*a*c;
 
@@ -488,27 +491,27 @@ private:
       // tangent
       x_int1 = (-b + sqrt(disc))/(2*a);
       y_int1 = (My-Ry)/(Mx-Rx) * (x_int1-Rx) + Ry;
-      // reuse doubles a and b to save runtime
-      a = distance(Rx, Ry, x_int1, y_int1);
+      d1 = distance(Rx, Ry, x_int1, y_int1);
       if (disc >= 0.001) {
         x_int2 = (-b - sqrt(disc))/(2*a);
-        y_int2 = (My-Ry)/(Mx-Rx) * (x_int1-Rx) + Ry;
-        b = distance(Rx, Ry, x_int2, y_int2);
-        if (b < max_range) {
-          if (b > a) {
-            return b;
-            // fake_lidar.ranges.push_back(b);
-            // RCLCPP_INFO(get_logger(), "point 2: %.2f", b);
+        y_int2 = (My-Ry)/(Mx-Rx) * (x_int2-Rx) + Ry;
+        d2 = distance(Rx, Ry, x_int2, y_int2);
+        if (d2 < max_range) {
+          if (d2 < d1 && ((x_int2-Rx)/(Mx-Rx) > 0) && ((y_int2-Ry)/(My-Ry) > 0)) {
+            return d2;
           }
-          else if (a < max_range) {
-            return a;
-            // fake_lidar.ranges.push_back(a);
-            // RCLCPP_INFO(get_logger(), "point 1: %.2f", a);
+          else if (d1 < max_range && ((x_int1-Rx)/(Mx-Rx) > 0) && ((y_int1-Ry)/(My-Ry) > 0)) {
+            return d1;
           }
         }
       }
+      else {
+        if (((x_int1-Rx)/(Mx-Rx) > 0) && ((y_int1-Ry)/(My-Ry) > 0)) {
+          return d1;
+        }
+      }
     }
-    return 0.0;
+    return 10*max_range;
   }
 
   /// \brief Reset timestep by listening to reset service
@@ -579,10 +582,10 @@ private:
     marker_id += 1;
 
     for (size_t loop = 0; loop < walls_x.points.size(); loop++) {
-      poss_collision.push_back(std::vector<double>{walls_x.points.at(loop).x, walls_x.points.at(loop).y});
+      poss_collision.push_back(std::vector<double>{walls_x.points.at(loop).x - wall_thickness/2.0, walls_x.points.at(loop).y});
     }
     for (size_t loop = 0; loop < walls_y.points.size(); loop++) {
-      poss_collision.push_back(std::vector<double>{walls_y.points.at(loop).x, walls_y.points.at(loop).y});
+      poss_collision.push_back(std::vector<double>{walls_y.points.at(loop).x, walls_y.points.at(loop).y - wall_thickness/2.0});
     }
   }
 
@@ -601,6 +604,7 @@ private:
     marker.color.g = 52.0 / 256.0;
     marker.color.b = 51.0 / 256.0;
     all_cyl.markers.push_back(marker);
+
     return marker;
   }
 
@@ -624,6 +628,7 @@ private:
       all_cyl.markers.at(loop).scale.x = cyl_radius;
       all_cyl.markers.at(loop).scale.y = cyl_radius;
       all_cyl.markers.at(loop).scale.z = cyl_height;
+      poss_collision.push_back(std::vector<double>{obs_x.at(loop), obs_y.at(loop)});
     }
   }
 
