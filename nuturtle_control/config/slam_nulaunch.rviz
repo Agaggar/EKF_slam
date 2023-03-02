@@ -58,6 +58,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /nusim/fake_sensor
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Map Obstacles
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /slam/map_obstacles
+      Value: true
     - Class: rviz_default_plugins/TF
       Enabled: false
       Frame Timeout: 15
