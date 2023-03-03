@@ -107,8 +107,7 @@ class Ekf_slam : public rclcpp::Node
     vec qt, qt_minusone, dq, mt_minusone, mt, zeta_update, zeta_predict, m_seen, zjt, zhat_jt, dz;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3, arma::fill::zeros);
-    mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
-    mat Q, Qbar, sys_cov_bar, Hj, Kj, R, Rj;
+    mat Q, Qbar, sys_cov_bar, sys_cov, sys_cov_minusone, Hj, Kj, R, Rj;
     double wheel_radius, track_width, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
@@ -147,19 +146,21 @@ class Ekf_slam : public rclcpp::Node
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         mt.zeros(2*poss_obs);
         sys_cov_minusone.zeros(3+2*poss_obs, 3+2*poss_obs);
-        sys_cov_bar.zeros(3+2*poss_obs, 3+2*poss_obs);
         for (size_t n = 0; n < poss_obs; n++) {
-          sys_cov_minusone(3+2*n,3+2*n) = 1e6; // large value for unknown diagonal measurements
-          sys_cov_minusone(3+2*n+1,3+2*n+1) = 1e6; // large value for unknown diagonal measurements
+          sys_cov_minusone(3+2*n,3+2*n) = 1e9; // large value for unknown diagonal measurements
+          sys_cov_minusone(3+2*n+1,3+2*n+1) = 1e9; // large value for unknown diagonal measurements
         }
+        sys_cov_bar = sys_cov_minusone;
+        sys_cov = sys_cov_minusone;
         mt_minusone.zeros(2*poss_obs);
         Q = q_coeff * arma::eye(3, 3);
         R = r_coeff * arma::eye(2*poss_obs, 2*poss_obs);
         Rj = arma::eye(2, 2);
         Qbar.zeros(3+2*poss_obs, 3+2*poss_obs);
         for (int n = 0; n < 3; n++) {
-          sys_cov_minusone(n,n) = Q(n,n);
+          Qbar(n,n) = Q(n,n);
         }
+        sys_cov_bar = sys_cov_minusone;
         Hj.zeros(2, 3+2*poss_obs);
         zeta_predict = arma::join_cols(qt, arma::vec(2*poss_obs, arma::fill::zeros));
         zeta_update = zeta_predict;
@@ -247,15 +248,18 @@ class Ekf_slam : public rclcpp::Node
     /// \brief obstacle marker callback at 5 Hz
     /// \param obs - obstacle array as published in nusim rviz
     void fake_sensor_callback(visualization_msgs::msg::MarkerArray obs) {
-      zeta_predict = arma::join_cols(qt, mt_minusone);
+      /// PREDICT step
       dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
-      // RCLCPP_ERROR_STREAM(get_logger(), "dq: \n" << dq);
       create_At();
       // RCLCPP_ERROR_STREAM(get_logger(), "bigAt: \n" << bigAt);
+      zeta_predict = arma::join_cols(qt_minusone + dq, mt_minusone);
+      // RCLCPP_ERROR_STREAM(get_logger(), "dq: \n" << dq);
       // zeta_minusone = arma::join_cols(qt_minusone, mt_minusone);
       create_cov();
       // RCLCPP_ERROR_STREAM(get_logger(), "covariance: \n" << sys_cov_bar);
       
+      /// CORRECT step 
+      // #TODO: look into changing mt and mt_minusone if errors persist
       for (size_t loop=0; loop < obs.markers.size(); loop++) {
         if (obs.markers.at(loop).action != 2) {
           rj = distance(0.0, 0.0, obs.markers.at(loop).pose.position.x, obs.markers.at(loop).pose.position.y);
@@ -305,7 +309,8 @@ class Ekf_slam : public rclcpp::Node
       zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
       // RCLCPP_ERROR_STREAM(get_logger(), "zeta_update: \n" << zeta_update);
       zeta_predict = zeta_update;
-      sys_cov_bar = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+      sys_cov = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+      sys_cov_bar = sys_cov;
       // RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
     }
 

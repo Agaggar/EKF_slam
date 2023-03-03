@@ -400,6 +400,7 @@ private:
       if (measured_cyl.markers.at(loop).action != 2 && 
           (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + cyl_radius)) &&
            !collided) {
+        RCLCPP_INFO(get_logger(), "collided!");
         turtlelib::Vector2D vec{(y0 - measured_cyl.markers.at(loop).pose.position.y), (x0 - measured_cyl.markers.at(loop).pose.position.x)};
         theta_collision = std::atan2((y0 + measured_cyl.markers.at(loop).pose.position.y), (x0 + measured_cyl.markers.at(loop).pose.position.x));
         x0 = x0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * cos(theta_collision);
