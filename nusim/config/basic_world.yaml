@@ -12,7 +12,7 @@
       r: 0.038 # m, radius of obstacles
       h: 0.25 # m, height of obstacles
     draw_only: true # boolean to draw red robot or not
-    input_noise: 0.01 # STD_DEV for input noise
+    input_noise: 0.001 # STD_DEV for input noise
     slip_fraction: 0.01 # how much robot slips when following a trajectory
-    basic_sensor_variance: 0.01 # STD_DEV for sensor
-    max_range: 0.5 # max range of sensor
+    basic_sensor_variance: 0.001 # STD_DEV for sensor
+    max_range: 2.0 # max range of sensor
