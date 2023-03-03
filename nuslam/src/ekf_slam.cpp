@@ -2,30 +2,28 @@
 /// \brief implementing ekf slam
 ///
 /// PARAMETERS:
-///     rate (double): frequency of timer callback (hertz)
-///     x0 (double): initial x position of the robot (m)
-///     y0 (double): initial y position of the robot (m)
-///     z0 (double): initial z position of the robot (m)
-///     theta0 (double): initial heading of the robot (rad)
+///     rate (double): frequency of timer callback (hertz), defaults to 200
+///     timestep (size_t): iterations of timer callback
+///     qt (arma::vec): current state of the robot, 3x1 vector
+///     qt_minusone (arma::vec): prev state of the robot, 3x1 vector
+///     wheel_radius (double): radius of the robot's wheels (m)
+///     wheel_track (double): radius of distance to wheels (m)
 ///     cyl_radius (double): radius of obstacles (m)
 ///     cyl_height (double): height of obstacles (m)
-///     obstacles.x (std::vector<double>): x coordinates of obstacles (m)
-///     obstacles.y (std::vector<double>): y coordinates of obstacles (m)
-///     x_length (double): length of walls in x-dir (m)
-///     y_length (double): length of walls in y-dir (m)
-///     input_noise (double): initial heading of the robot (rad)
-///     #TODO: add all parameters, update publishers, etc
-///      (std::vector<double>): x coordinates of obstacles (m)
-///      (std::vector<double>): y coordinates of obstacles (m)
-///
+///     q_coeff (double): scalar value to scale Q matrix - process noise
+///     r_coeff (double): scalar value to scale R matrix - sensor matrix
+///     greenbot (turtlelib::DiffDrive): diff drive object of green robot
 /// PUBLISHES:
-///     obstacles (visualization_msgs::msg::MarkerArray): publish cylinder markers to rviz
-///     timestep (int): publish timestep of simulation
+///     /tf (tf2_ros::TransformBroadcaster): publish transform from map to odom and odom to green/base_footprint
+///     green/joint_states (sensor_msgs::msg::JointState): publish joint state of wheels for motion
+///     ~/odom (nav_msgs::msg::Odometry): publish odometry
+///     ~/map_obstacles (visualization_msgs::msg::MarkerArray): publish map cylinder markers to rviz
+///     green/greenpath (nav_msgs::msg::Path): publish points of where the robot has been
 /// SUBSCRIBES:
-///     none
+///     ~/joint_states (sensor_msgs::msg::JointState): odometry joint states for forward kinematics
+///     ~/fake_sensor (visualization_msgs::msg::MarkerArray): fake_sensor reading from robot
 /// SERVERS:
-///     reset (std_srvs::srv::Empty): reset timestep to 0
-///     teleport (nusim::srv::Teleport): move the robot to a specified x, y, theta position
+///     none
 /// CLIENTS:
 ///     none
 
@@ -63,31 +61,16 @@ class Ekf_slam : public rclcpp::Node
       qt_minusone(vec(3)),
       wheel_radius(0.033),
       track_width(0.16), 
-      motor_cmd_per_rad_sec(1.0 / 0.024), 
-      encoder_ticks_per_rad(651.8986),
       cyl_radius(0.038),
       cyl_height(0.25),
       q_coeff(0.1),
       r_coeff(1.0),
       greenbot()
     {
-      declare_parameter("wheel_radius", rclcpp::ParameterValue(-1.0));
-      declare_parameter("track_width", rclcpp::ParameterValue(-1.0));
-      declare_parameter("motor_cmd_per_rad_sec", rclcpp::ParameterValue(-1.0));
-      declare_parameter("encoder_ticks_per_rad", rclcpp::ParameterValue(-1.0));
+      declare_parameter("wheel_radius", rclcpp::ParameterValue(wheel_radius));
+      declare_parameter("track_width", rclcpp::ParameterValue(track_width));
       get_parameter("wheel_radius", wheel_radius);
       get_parameter("track_width", track_width);
-      get_parameter("motor_cmd_per_rad_sec", motor_cmd_per_rad_sec);
-      get_parameter("encoder_ticks_per_rad", encoder_ticks_per_rad);
-      std::vector<double> params_set {wheel_radius, track_width,
-                                      motor_cmd_per_rad_sec, encoder_ticks_per_rad};
-
-      for (unsigned int i = 0; i < params_set.size(); i++) {
-        if (params_set.at(i) == -1.0) {
-          RCLCPP_ERROR(get_logger(), "One or more parameters not set!");
-          rclcpp::shutdown();
-        }
-      }
 
       declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius));
       get_parameter("obstacles.r", cyl_radius);
@@ -108,8 +91,6 @@ class Ekf_slam : public rclcpp::Node
         "~/fake_sensor", 100, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
       );
       tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-      tf_buffer = std::make_unique<tf2_ros::Buffer>(this->get_clock());
-      t_listener_og = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
       js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 100);
       odom_pub = create_publisher<nav_msgs::msg::Odometry>("~/odom", 100);
       map_obs_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/map_obstacles", 5);
@@ -128,15 +109,13 @@ class Ekf_slam : public rclcpp::Node
     mat bigAt = mat(3, 3, arma::fill::zeros);
     mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
     mat Q, Qbar, sys_cov_bar, Hj, Kj, R, Rj;
-    double wheel_radius, track_width, motor_cmd_per_rad_sec, encoder_ticks_per_rad, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij;
+    double wheel_radius, track_width, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr map_obs_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
     rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
-    std::unique_ptr<tf2_ros::Buffer> tf_buffer;
-    std::shared_ptr<tf2_ros::TransformListener> t_listener_og;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
     rclcpp::TimerBase::SharedPtr timer;
     geometry_msgs::msg::TransformStamped t_odom_green, t_mo;
