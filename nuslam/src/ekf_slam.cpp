@@ -123,7 +123,7 @@ class Ekf_slam : public rclcpp::Node
   private:
     double rate;
     size_t timestep;
-    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_minusone, zeta, m_seen, zjt, zhat_jt, dz;
+    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_update, zeta_predict, m_seen, zjt, zhat_jt, dz;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3, arma::fill::zeros);
     mat sys_cov_minusone = mat(3, 3, arma::fill::zeros);
@@ -145,7 +145,7 @@ class Ekf_slam : public rclcpp::Node
     sensor_msgs::msg::JointState js_green;
     nav_msgs::msg::Odometry odom_msg;
     double dxj, dyj, dj, prev_theta;
-    int poss_obs = 5; // container for total possible number of obstacles
+    size_t poss_obs = 5; // container for total possible number of obstacles
     visualization_msgs::msg::Marker marker;
     visualization_msgs::msg::MarkerArray all_cyl;
     bool found = false;
@@ -158,20 +158,22 @@ class Ekf_slam : public rclcpp::Node
     /// \brief main timer callback
     void timer_callback() {
       if (timestep == 0) {
+        m_seen.ones(poss_obs);
+        m_seen = -10*m_seen;
         create_all_cylinders();
-
+        qt.zeros(3);
+        qt_minusone.zeros(3);
         bigAt.zeros(3+2*poss_obs, 3+2*poss_obs);
         qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         mt.zeros(2*poss_obs);
         sys_cov_minusone.zeros(3+2*poss_obs, 3+2*poss_obs);
         sys_cov_bar.zeros(3+2*poss_obs, 3+2*poss_obs);
-        for (size_t n = 3; n < poss_obs; n++) {
-          sys_cov_minusone(n,n) = 1e6; // large value for unknown diagonal measurements
+        for (size_t n = 0; n < poss_obs; n++) {
+          sys_cov_minusone(3+2*n,3+2*n) = 1e6; // large value for unknown diagonal measurements
+          sys_cov_minusone(3+2*n+1,3+2*n+1) = 1e6; // large value for unknown diagonal measurements
         }
         mt_minusone.zeros(2*poss_obs);
-        m_seen.ones(poss_obs);
-        m_seen = -10*m_seen;
         Q = q_coeff * arma::eye(3, 3);
         R = r_coeff * arma::eye(2*poss_obs, 2*poss_obs);
         Rj = arma::eye(2, 2);
@@ -180,7 +182,8 @@ class Ekf_slam : public rclcpp::Node
           sys_cov_minusone(n,n) = Q(n,n);
         }
         Hj.zeros(2, 3+2*poss_obs);
-        zeta = arma::join_cols(qt, arma::vec(2*poss_obs, arma::fill::zeros));
+        zeta_predict = arma::join_cols(qt, arma::vec(2*poss_obs, arma::fill::zeros));
+        zeta_update = zeta_predict;
         dz.zeros(2);
 
         t_mo.header.frame_id = "map";
@@ -220,11 +223,11 @@ class Ekf_slam : public rclcpp::Node
       tf2_rostf_broadcaster->sendTransform(t_odom_green);
       odom_pub->publish(compute_odom());
       
-      T_mr = {turtlelib::Vector2D{qt(1), qt(2)}, qt(0)}; // from slam
+      T_mr = {turtlelib::Vector2D{zeta_predict(1), zeta_predict(2)}, zeta_predict(0)}; // from slam
       T_or = {turtlelib::Vector2D{t_odom_green.transform.translation.x, t_odom_green.transform.translation.y}, prev_theta}; // from odom
       T_mo = T_mr*(T_or.inv());
       if (timestep%40 == 0) {
-        RCLCPP_INFO(get_logger(), "gre robot state: %.3f, %.3f, %.3f", qt_minusone(0), qt_minusone(1), qt_minusone(2));
+        // RCLCPP_INFO(get_logger(), "gre robot state: %.3f, %.3f, %.3f", qt_minusone(0), qt_minusone(1), qt_minusone(2));
       }
       // RCLCPP_INFO(get_logger(), "green rot: no normal: %.2f; normal: %.2f", T_mo.rotation(), turtlelib::normalize_angle(T_mo.rotation()));
       t_mo.header.stamp = get_clock()->now();
@@ -265,49 +268,38 @@ class Ekf_slam : public rclcpp::Node
     /// \brief obstacle marker callback at 5 Hz
     /// \param obs - obstacle array as published in nusim rviz
     void fake_sensor_callback(visualization_msgs::msg::MarkerArray obs) {
-      zeta = arma::join_cols(qt, mt_minusone);
+      zeta_predict = arma::join_cols(qt, mt_minusone);
       dq = {turtlelib::normalize_angle(qt(0) - qt_minusone(0)), qt(1) - qt_minusone(1), qt(2) - qt_minusone(2)};
+      // RCLCPP_ERROR_STREAM(get_logger(), "dq: \n" << dq);
       create_At();
-      RCLCPP_ERROR_STREAM(get_logger(), "bigAt: \n" << bigAt);
+      // RCLCPP_ERROR_STREAM(get_logger(), "bigAt: \n" << bigAt);
       // zeta_minusone = arma::join_cols(qt_minusone, mt_minusone);
       create_cov();
-      RCLCPP_ERROR_STREAM(get_logger(), "covariance: \n" << sys_cov_bar);
+      // RCLCPP_ERROR_STREAM(get_logger(), "covariance: \n" << sys_cov_bar);
       
       for (size_t loop=0; loop < obs.markers.size(); loop++) {
         if (obs.markers.at(loop).action != 2) {
-          // during correction, do we add relative x and y to mt_minusone?
           rj = distance(0.0, 0.0, obs.markers.at(loop).pose.position.x, obs.markers.at(loop).pose.position.y);
-          phij = turtlelib::normalize_angle(atan2(obs.markers.at(loop).pose.position.y, obs.markers.at(loop).pose.position.x));
+          phij = (atan2(obs.markers.at(loop).pose.position.y, obs.markers.at(loop).pose.position.x));
           if (m_seen.at(loop) != obs.markers.at(loop).id) {
             m_seen(loop) = obs.markers.at(loop).id;
-            mt_minusone(2*loop) = zeta(1) + rj*cos(phij + zeta(0)); // update measured landmark x
-            mt_minusone(2*loop + 1) = zeta(2) + rj*sin(phij + zeta(0)); // update measured landmark y
+            mt_minusone(2*loop) = zeta_predict(1) + rj*cos(phij + zeta_predict(0)); // update measured landmark x
+            mt_minusone(2*loop + 1) = zeta_predict(2) + rj*sin(phij + zeta_predict(0)); // update measured landmark y
           }
           zjt = {rj, phij};
           measurement_model(loop);
         }
       }
 
-      qt_minusone = {zeta(0), zeta(1), zeta(2)};
-      RCLCPP_ERROR_STREAM(get_logger(), "new zeta: \n" << qt_minusone);
-      greenbot.setCurrentConfig(std::vector<double>{qt_minusone(1), qt_minusone(2), qt_minusone(0)});
-
+      qt_minusone = {zeta_predict(0), zeta_predict(1), zeta_predict(2)};
+      // RCLCPP_ERROR_STREAM(get_logger(), "new zeta_predict: \n" << zeta_predict);
     }
 
     /// \brief helper function to create framework for bigAt
     void create_At() {
       bigAt.eye();
-      bigAt.at(1, 0) += -dq.at(2);
-      bigAt.at(2, 0) += dq.at(1);
-      // // create Qbar, if new landmarks are found (including at t=0)
-      // if (Qbar.n_elem != bigAt.n_elem) {
-      //   Qbar = mat(bigAt.n_rows, bigAt.n_cols, arma::fill::zeros);
-      //   for (int i = 0; i < 3; i++) {
-      //     for (int j = 0; i < 3; i++) {
-      //       Qbar(i, j) = Q(i, j);
-      //     }
-      //   }
-      // }
+      bigAt.at(1, 0) = -dq.at(2);
+      bigAt.at(2, 0) = dq.at(1);
     }
 
     /// \brief helper function to create system covariance matrix 
@@ -318,10 +310,10 @@ class Ekf_slam : public rclcpp::Node
 
     /// \brief function to create measurement model
     void measurement_model(size_t j) {
-      dxj =  mt_minusone(2*j) - zeta(1);
-      dyj =  mt_minusone(2*j + 1) - zeta(2);
+      dxj =  mt_minusone(2*j) - zeta_predict(1);
+      dyj =  mt_minusone(2*j + 1) - zeta_predict(2);
       dj = dxj*dxj + dyj*dyj;
-      zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta(0))}; 
+      zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta_predict(0))}; 
       Hj.zeros(2, 3+2*poss_obs);
       populate_Hj(j);
       Kj.zeros(3, 2+2*poss_obs);
@@ -329,12 +321,13 @@ class Ekf_slam : public rclcpp::Node
       Rj(0, 1) = R(2*j, 2*j+1);
       Rj(1, 0) = R(2*j+1, 2*j);
       Rj(1, 1) = R(2*j+1, 2*j+1);
-      Kj = sys_cov_bar*Hj.t()*((Hj*sys_cov_bar*Hj.t() + Rj).i());
-      RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
-      dz = zhat_jt - zjt;
-      zeta = zeta + Kj*dz;
-      sys_cov_bar = (mat(3+2*m_seen.n_elem, 3+2*m_seen.n_elem, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
-      RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
+      Kj = sys_cov_bar*Hj.t()*((Hj*sys_cov_bar*(Hj.t()) + Rj).i());
+      // RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
+      zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
+      // RCLCPP_ERROR_STREAM(get_logger(), "zeta_update: \n" << zeta_update);
+      zeta_predict = zeta_update;
+      sys_cov_bar = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+      // RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
     }
 
     /// \brief helper function to create Hj
@@ -397,7 +390,7 @@ class Ekf_slam : public rclcpp::Node
 
   /// \brief Create a single cylinder and add it to a MarkerArray
   /// \param loop - landmark number
-  void create_cylinder(int loop)
+  void create_cylinder(size_t loop)
   {
     marker.header.frame_id = "nusim/world";
     marker.header.stamp = get_clock()->now();
@@ -423,7 +416,7 @@ class Ekf_slam : public rclcpp::Node
   /// \brief Create all cylinders
   void create_all_cylinders()
   {
-    for (int loop = 0; loop < poss_obs; loop++) {
+    for (size_t loop = 0; loop < poss_obs; loop++) {
       create_cylinder(loop);
     }
   }
@@ -433,10 +426,10 @@ class Ekf_slam : public rclcpp::Node
   {
     for (size_t loop = 0; loop < poss_obs; loop++) {
       all_cyl.markers.at(loop).header.stamp = get_clock()->now();
-      if ((mt_minusone(2*loop) != 0.0) && (mt_minusone(2*loop+1) != 0.0)) {
+      if (m_seen(loop) >= 0.0) {
         all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
-        all_cyl.markers.at(loop).pose.position.x = zeta(qt.n_elem + loop*2);
-        all_cyl.markers.at(loop).pose.position.y = zeta(qt.n_elem + loop*2 + 1);
+        all_cyl.markers.at(loop).pose.position.x = zeta_predict(qt.n_elem + loop*2);
+        all_cyl.markers.at(loop).pose.position.y = zeta_predict(qt.n_elem + loop*2 + 1);
       }
       else {
         all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
