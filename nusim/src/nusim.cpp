@@ -291,7 +291,7 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr red_path_pub;
   std::normal_distribution<> gauss_dist_vel_noise, gauss_dist_obstacle_noise, gauss_dist_lidar_noise;
   std::uniform_real_distribution<> unif_dist;
-  double relative_x, relative_y, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y, d1, d2;
+  double relative_x, relative_y, a, b, c, disc, x_int1, x_int2, y_int1, y_int2, meas_samp_x, meas_samp_y, d1, d2, theta_collision;
   sensor_msgs::msg::LaserScan fake_lidar;
   std::vector<std::vector<double>> poss_collision;
   std::vector<float> range_lidar;
@@ -359,10 +359,14 @@ private:
     marker_pub_->publish(all_cyl);
     update_sd();
     sd_pub->publish(sd);
+    if (timestep%40 == 0) {
+      // RCLCPP_INFO(get_logger(), "red robot state: %.3f, %.3f, %.3f", redbot.getCurrentConfig().at(2), redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1));
+    }
   }
 
   /// \brief timer callback at 5 hz for a fake sensor
   void fake_sensor_timer() {
+    collided = false;
     cylinders_as_measured();
     simulate_lidar();
     fake_sensor_pub->publish(measured_cyl);
@@ -392,11 +396,14 @@ private:
     std::vector<double> phi_current = redbot.getWheelPos();
     redbot.fkinematics(
       std::vector<double>{left_new_pos, right_new_pos});
-    collided = false;
     for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
       if (measured_cyl.markers.at(loop).action != 2 && 
-          (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + tolerance))) {
-        theta0 = std::atan2((measured_cyl.markers.at(loop).pose.position.y), (measured_cyl.markers.at(loop).pose.position.x));
+          (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + cyl_radius)) &&
+           !collided) {
+        turtlelib::Vector2D vec{(y0 - measured_cyl.markers.at(loop).pose.position.y), (x0 - measured_cyl.markers.at(loop).pose.position.x)};
+        theta_collision = std::atan2((y0 + measured_cyl.markers.at(loop).pose.position.y), (x0 + measured_cyl.markers.at(loop).pose.position.x));
+        x0 = x0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * cos(theta_collision);
+        y0 = y0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * sin(theta_collision);
         redbot.setCurrentConfig(std::vector<double>{x0, y0, theta0}); // robot doesn't move, but wheels still updated
         collided = true;
       }
