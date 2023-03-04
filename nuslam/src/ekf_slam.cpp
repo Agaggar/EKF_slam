@@ -262,8 +262,8 @@ class Ekf_slam : public rclcpp::Node
       // #TODO: look into changing mt and mt_minusone if errors persist
       for (size_t loop=0; loop < obs.markers.size(); loop++) {
         if (obs.markers.at(loop).action != 2) {
-          rj = distance(0.0, 0.0, obs.markers.at(loop).pose.position.x, obs.markers.at(loop).pose.position.y);
-          phij = (atan2(obs.markers.at(loop).pose.position.y, obs.markers.at(loop).pose.position.x));
+          rj = distance(qt_minusone(1), qt_minusone(2), qt(1) + obs.markers.at(loop).pose.position.x, qt(2) + obs.markers.at(loop).pose.position.y);
+          phij = (atan2(qt_minusone(2) + obs.markers.at(loop).pose.position.y, qt_minusone(1) + obs.markers.at(loop).pose.position.x));
           if (m_seen.at(loop) != obs.markers.at(loop).id) {
             m_seen(loop) = obs.markers.at(loop).id;
             mt_minusone(2*loop) = zeta_predict(1) + rj*cos(phij + zeta_predict(0)); // update measured landmark x
