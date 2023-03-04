@@ -7,11 +7,11 @@ This package is designed to do ekf slam to correct the position discrepancy betw
 * simply run `ros2 launch nuslam slam.launch.xml cmd_src:='teleop'` to launch the slam node, along with necessary rviz files and the turtlebot teleop keyboard to control the redbot in rviz
 
 ### Parameters
-* Parameters can be changed in `basic_world.yaml` and `diff_params.yaml`. See the `nusim` and `nuturtle_description` packages respectively for more more information. Addtionally, there are labeled additional parameters for sensor noise, slip fraction, max_range of the snesor, etc.
+* Parameters can be changed in `basic_world.yaml` and `diff_params.yaml`. See the `nusim` and `nuturtle_description` packages respectively for more more information. Addtionally, there are labeled additional parameters for sensor noise, slip fraction, max_range of the sensor, etc.
 * all the same parameter descriptions from nuturtle-control package can be used here
 
 ## Final RViZ screenshot:
-
+![rviz_slam](https://user-images.githubusercontent.com/10903052/222858761-2a350b7a-70c5-47a5-be5b-78a4aaab9590.png)
 
 ## Note:
 This package isn't fully functional. 
