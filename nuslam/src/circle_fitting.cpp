@@ -70,6 +70,19 @@ arma::vec computeA(arma::mat Z, arma::mat H) {
     else {
         arma::mat Y = V * arma::diagmat(S) * (V.t());
         arma::mat Q = Y * (computeInv(H)) * Y;
+        arma::cx_vec eigval;
+        arma::cx_mat eigvec;
+        arma::eig_gen(eigval, eigvec, Q);
+        min_S = 1e12;
+        double index = 0;
+        for (size_t n = 0; n < eigval.n_elem; n++) {
+            if (eigval.at(n).real() < min_S && eigval.at(n).real() > 0) {
+                min_S = S.at(n);
+                index = n;
+            }
+        }
+        // find eigenvector associated with said eigenvalue (A*), then compute A 
+        // return eigvec.at(index, index) * (arma::inv(Y))
     }
 }
 
