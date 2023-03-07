@@ -395,22 +395,23 @@ private:
       std::vector<double>{left_new_pos, right_new_pos});
     for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
       if (measured_cyl.markers.at(loop).action != 2 && 
-          (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + cyl_radius)) &&
-           !collided) {
+          (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + cyl_radius))) {
         RCLCPP_INFO(get_logger(), "collided!");
-        turtlelib::Vector2D vec{(y0 - measured_cyl.markers.at(loop).pose.position.y), (x0 - measured_cyl.markers.at(loop).pose.position.x)};
+        // turtlelib::Vector2D vec{(y0 - measured_cyl.markers.at(loop).pose.position.y), (x0 - measured_cyl.markers.at(loop).pose.position.x)};
         theta_collision = std::atan2((y0 + measured_cyl.markers.at(loop).pose.position.y), (x0 + measured_cyl.markers.at(loop).pose.position.x));
         x0 = x0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * cos(theta_collision);
         y0 = y0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * sin(theta_collision);
+        measured_cyl.markers.at(loop).pose.position.x += distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) * cos(theta_collision);
+        measured_cyl.markers.at(loop).pose.position.y += distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) * sin(theta_collision);
         redbot.setCurrentConfig(std::vector<double>{x0, y0, theta0}); // robot doesn't move, but wheels still updated
-        collided = true;
+        // collided = true;
       }
     }
-    if (!collided) {
-      x0 = redbot.getCurrentConfig().at(0);
-      y0 = redbot.getCurrentConfig().at(1);
-      theta0 = redbot.getCurrentConfig().at(2);
-    }
+    // if (!collided) {
+    x0 = redbot.getCurrentConfig().at(0);
+    y0 = redbot.getCurrentConfig().at(1);
+    theta0 = redbot.getCurrentConfig().at(2);
+    // }
     std::vector<double> phiprime_noise{
       wheel_velocities.at(0) * (1 + unif_dist(get_random())) * (1.0/rate),
       wheel_velocities.at(1) * (1 + unif_dist(get_random())) * (1.0/rate)
