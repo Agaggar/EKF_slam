@@ -275,6 +275,10 @@ class Ekf_slam : public rclcpp::Node
       }
 
       qt_minusone = {zeta_predict(0), zeta_predict(1), zeta_predict(2)};
+      for (size_t loop = 0; loop < poss_obs; loop++) {
+        mt_minusone(2*loop) = zeta_predict(2 + 2*loop);
+        mt_minusone(2*loop + 1) = zeta_predict(2 + 2*loop + 1);
+      }
       // RCLCPP_ERROR_STREAM(get_logger(), "new zeta_predict: \n" << zeta_predict);
     }
 
