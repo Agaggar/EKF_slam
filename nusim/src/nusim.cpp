@@ -9,34 +9,26 @@
 ///     theta0 (double): initial heading of the robot (rad)
 ///     cyl_radius (double): radius of obstacles (m)
 ///     cyl_height (double): height of obstacles (m)
-///     obstacles.x (std::vector<double>): x coordinates of obstacles (m)
-///     obstacles.y (std::vector<double>): y coordinates of obstacles (m)
+///     obs_x (std::vector<double>): x coordinates of obstacles (m)
+///     obs_y (std::vector<double>): y coordinates of obstacles (m)
 ///     x_length (double): length of walls in x-dir (m)
 ///     y_length (double): length of walls in y-dir (m)
 ///     input_noise (double): initial heading of the robot (rad)
-///     #TODO: add all parameters, update publishers, etc
-///      (std::vector<double>): x coordinates of obstacles (m)
-///      (std::vector<double>): y coordinates of obstacles (m)
-
-/*
-    input_noise(0.0),
-    slip_fraction(0.0),
-    basic_sensor_variance(1.0),
-    max_range(1.0),
-    collision_radius(0.11),
-    encoder_ticks_per_rad(651.8986),
-    motor_cmd_per_rad_sec(1.0 / 0.024),
-    draw_only(true),
-    angle_min(0.0),
-    angle_max(6.2657318115234375),
-    angle_increment(0.01745329238474369),
-    time_increment(0.0005574136157520115),
-    scan_time(0.20066890120506287),
-    range_min(0.11999999731779099),
-    range_max(3.5),
-    lidar_noise(0.0001)
-  
-*/
+///     slip_fraction (double): parameter to simulate slipping of wheel (dimensionless)
+///     basic_sensor_variance (double): STD_DEV of the sensor reading (dimensionless)
+///     max_range (double): maximum sensing range of sensor (m)
+///     collision_radius (double): loaded from diff_params.yaml; collision radius in m
+///     encoder_ticks_per_rad (double): loaded from diff_params.yaml; number of encoder ticks per radian
+///     motor_cmd_per_rad_sec (double): loaded from diff_params.yaml; motor command tick in rad/s
+///     draw_only (bool): red robot appears and draw path
+///     angle_min (double): minimum angle that lidar can sense (rad)
+///     angle_max (double): maximum angle that lidar can sense (rad)
+///     angle_increment (double): angle increments between lidar data (rad)
+///     time_increment (double): time between each reading of lidar data (s)
+///     scan_time (double): total time per full lidar measurement (s)
+///     range_min (double): minimum range that lidar can sense (m)
+///     range_max (double): maximum range that lidar can sense, according to its datasheet (m)
+///     lidar_noise (double): value to simulate noise in lidar measurements (dimensionless)
 /// PUBLISHES:
 ///     obstacles (visualization_msgs::msg::MarkerArray): publish cylinder markers to rviz
 ///     timestep (int): publish timestep of simulation
@@ -457,7 +449,7 @@ private:
       // check dist to walls
       for (size_t check = 0; check < (walls_x.points.size() + walls_y.points.size()); check++) {
         range_lidar.push_back(
-          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), wall_thickness));
+          check_incidence(x0, y0, meas_samp_x, meas_samp_y, poss_collision.at(check).at(0), poss_collision.at(check).at(1), 0.001));
       }
       // check dist to obstacles
       for (size_t check = (walls_x.points.size() + walls_y.points.size()); check < poss_collision.size(); check++) {
