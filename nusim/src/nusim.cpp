@@ -30,10 +30,15 @@
 ///     range_max (double): maximum range that lidar can sense, according to its datasheet (m)
 ///     lidar_noise (double): value to simulate noise in lidar measurements (dimensionless)
 /// PUBLISHES:
-///     obstacles (visualization_msgs::msg::MarkerArray): publish cylinder markers to rviz
-///     timestep (int): publish timestep of simulation
+///     /tf (tf2_ros::TransformBroadcaster): publish transform from nusim/world to red/base_footprint
+///     /timestep (int): publish timestep of simulation
+///     ~/obstacles (visualization_msgs::msg::MarkerArray): publish cylinder markers to rviz
+///     ~/redpath (nav_msgs::msg::Path): publish path taken by red robot to rviz
+///     ~/sensor_data (nuturtlebot_msgs::msg::SensorData): publish nuturtlebot sensor data
+///     ~/sim_lidar (sensor_msgs::msg::LaserScan): publish simulated lidar data
+///     ~/fake_sensor (visualization_msgs::msg::MarkerArray): publish "sensed data" (fake) to rviz
 /// SUBSCRIBES:
-///     none
+///     /wheel_cmd (nuturtlebot_msgs::msg::WheelCommands)
 /// SERVERS:
 ///     reset (std_srvs::srv::Empty): reset timestep to 0
 ///     teleport (nusim::srv::Teleport): move the robot to a specified x, y, theta position
