@@ -15,4 +15,4 @@
     input_noise: 0.001 # STD_DEV for input noise
     slip_fraction: 0.01 # how much robot slips when following a trajectory
     basic_sensor_variance: 0.001 # STD_DEV for sensor
-    max_range: 0.5 # max range of sensor
+    max_range: 1.0 # max range of sensor
