@@ -255,7 +255,9 @@ class Ekf_slam : public rclcpp::Node
       create_At();
       // RCLCPP_ERROR_STREAM(get_logger(), "bigAt: \n" << bigAt);
       // zeta_predict = arma::join_cols(qt_minusone + dq, mt_minusone);
+      RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 0: \n" << zeta_predict);
       zeta_predict(0) += dq(0);
+      zeta_predict(0) = turtlelib::normalize_angle(zeta_predict(0));
       zeta_predict(1) += dq(1);
       zeta_predict(2) += dq(2);
       // RCLCPP_ERROR_STREAM(get_logger(), "dq: \n" << dq);
@@ -268,7 +270,7 @@ class Ekf_slam : public rclcpp::Node
       for (size_t landmark_id=0; landmark_id < obs.markers.size(); landmark_id++) {
         if (obs.markers.at(landmark_id).action != 2) {
           rj = distance(0.0, 0.0, obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y);
-          phij = turtlelib::normalize_angle((atan2(obs.markers.at(landmark_id).pose.position.y, obs.markers.at(landmark_id).pose.position.x)));
+          phij = turtlelib::normalize_angle(atan2(obs.markers.at(landmark_id).pose.position.y, obs.markers.at(landmark_id).pose.position.x));
           if (m_seen.at(landmark_id) != obs.markers.at(landmark_id).id) {
             // RCLCPP_INFO(get_logger(), "now you see landmark: %ld", landmark_id);
             m_seen(landmark_id) = obs.markers.at(landmark_id).id;
@@ -299,7 +301,7 @@ class Ekf_slam : public rclcpp::Node
 
     /// \brief helper function to create system covariance matrix 
     void create_cov() {
-      sys_cov_bar = bigAt * sys_cov_minusone * bigAt.t() + Qbar;
+      sys_cov_bar = bigAt * sys_cov_minusone * (bigAt.t()) + Qbar;
       sys_cov_minusone = sys_cov_bar;
     }
 
@@ -308,26 +310,27 @@ class Ekf_slam : public rclcpp::Node
       dxj =  getLandmarkX(landmark_id) - zeta_predict(1);
       dyj =  getLandmarkY(landmark_id) - zeta_predict(2);
       dj = dxj*dxj + dyj*dyj;
-      zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta_predict(0))}; 
+      zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta_predict(0))};
       // RCLCPP_ERROR_STREAM(get_logger(), "mt_minusone: \n" << mt_minusone);
-      RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict: \n" << zeta_predict);
-      RCLCPP_INFO(get_logger(), "dx: %.4f, dy: %.4f, d: %.4f, phi_calc: %.4f, phi_acc: %.4f", dxj, dyj, dj, atan2(dyj, dxj), zeta_predict(0));
-      RCLCPP_ERROR_STREAM(get_logger(), "z: \n" << zjt);
-      RCLCPP_ERROR_STREAM(get_logger(), "zhat: \n" << zhat_jt);
+      RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 1: \n" << zeta_predict);
+      // RCLCPP_INFO(get_logger(), "dx: %.4f, dy: %.4f, d: %.4f, phi_calc: %.4f, phi_acc: %.4f", dxj, dyj, dj, atan2(dyj, dxj), zeta_predict(0));
+      // RCLCPP_ERROR_STREAM(get_logger(), "z: \n" << zjt);
+      // RCLCPP_ERROR_STREAM(get_logger(), "zhat: \n" << zhat_jt);
       // RCLCPP_INFO(get_logger(), "distance: %.4f, angle: %.4f", rj, phij);
       Hj.zeros(2, 3+2*poss_obs);
       populate_Hj(landmark_id);
-      Kj.zeros(3, 2+2*poss_obs);
+      Kj.zeros(3+2*poss_obs, 2);
       Rj(0, 0) = R(2*landmark_id, 2*landmark_id);
       Rj(0, 1) = R(2*landmark_id, 2*landmark_id+1);
       Rj(1, 0) = R(2*landmark_id+1, 2*landmark_id);
       Rj(1, 1) = R(2*landmark_id+1, 2*landmark_id+1);
       Kj = sys_cov_bar*(Hj.t())*((Hj*sys_cov_bar*(Hj.t()) + Rj).i());
-      // RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
+      RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
       zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
       zeta_update(0) = turtlelib::normalize_angle(zeta_update(0));
       // RCLCPP_ERROR_STREAM(get_logger(), "zeta_update: \n" << zeta_update);
       zeta_predict = zeta_update;
+      RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 3: \n" << zeta_predict);
       sys_cov = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
       sys_cov_bar = sys_cov;
       // RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
