@@ -188,6 +188,9 @@ public:
     declare_parameter("basic_sensor_variance", rclcpp::ParameterValue(basic_sensor_variance));
     get_parameter("basic_sensor_variance", basic_sensor_variance);
 
+    declare_parameter("max_range", rclcpp::ParameterValue(max_range));
+    get_parameter("max_range", max_range);
+
     declare_parameter("collision_radius", rclcpp::ParameterValue(collision_radius));
     get_parameter("collision_radius", collision_radius);
 
