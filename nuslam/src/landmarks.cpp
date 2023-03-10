@@ -60,7 +60,7 @@ class Landmarks : public rclcpp::Node
         vec ranges = vec(359, arma::fill::zeros);
         std::vector<std::vector<float>> clusters;
         // mat clusters = mat(359, 359, -1*arma::fill::ones);
-        int cluster_count = 3; // number of points before its considered a cluster
+        int cluster_count = 4; // number of points before its considered a cluster
         int clust_check_count = 0;
         bool is_cluster = false;
         double tolerance = 0.1;
@@ -105,7 +105,7 @@ class Landmarks : public rclcpp::Node
                     }
                 }
                 // are cluster_count (3) consecutive values close to a tolerance value?
-                if (clust_check_count == 3) {
+                if (clust_check_count == cluster_count) {
                     clust_check_count = 0;
                     // RCLCPP_INFO(get_logger(), "points: %.2f, %.2f, %.2f", ranges(index+1), ranges(index), std::abs(ranges(index+1) - ranges(index)));
                     for (int point = 0; point < (cluster_count - 1); point++) {
@@ -113,7 +113,7 @@ class Landmarks : public rclcpp::Node
                             clust_check_count++;
                         }
                     }
-                    if (clust_check_count == 2) {
+                    if (clust_check_count == (cluster_count - 1)) {
                         // RCLCPP_INFO(get_logger(), "cluster found: %ld", index);
                         is_cluster = true;
                     }
@@ -128,10 +128,47 @@ class Landmarks : public rclcpp::Node
                 }
             }
             is_cluster = false;
-            // it's possible that the scan wrapped around, and a cluster is formed from either
-            // the last 2 points and the first point, OR the last point and the first 2 points
+            // it's possible that the scan wrapped around, and a cluster is formed from the last n number of points
             if ((ranges(ranges.n_elem - 1) != 0.0) && (ranges(0) != 0.0)) {
                 // last point, and first 2 points
+                std::vector<double> wrap_around;
+                for (int loop = -cluster_count; loop < cluster_count; loop++) {
+                    if (loop < 0) {
+                        wrap_around.push_back(ranges(ranges.n_elem - 1 + loop));
+                    }
+                    else {
+                        wrap_around.push_back(ranges(loop));
+                    }
+                }
+                clust_check_count = 0;
+                int first = 0;
+                // RCLCPP_INFO(get_logger(), "points: %.2f, %.2f, %.2f", ranges(index+1), ranges(index), std::abs(ranges(index+1) - ranges(index)));
+                for (int point = 0; point < (wrap_around.size() - 1); point++) {
+                    if ((std::abs(wrap_around.at(point+1) - wrap_around.at(point)) < tolerance) && 
+                        (wrap_around.at(point) > 0)) {
+                        if (clust_check_count == 0) {
+                            first = point;
+                        }
+                        clust_check_count++;
+                    }
+                }
+                if (clust_check_count == (cluster_count - 1)) {
+                    RCLCPP_INFO(get_logger(), "cluster found at the end!");
+                    if (first < 0) {
+                        first = ranges.n_elem - 1 + first;
+                    }
+                    else {
+                        clusters.push_back(std::vector<float>{(float) first}); // the first element of a row is the angle value of where it was measured
+                    }
+                    for (int point = 0; point < cluster_count; point++) {
+                        if ((first + point + 1) == ranges.n_elem) {
+                            first = 0;
+                        }
+                        clusters.at(cluster_row).push_back(ranges(first + point));
+                    }
+                }
+                // cluster_row++;
+                /*
                 if (std::abs(ranges(ranges.n_elem - 1) - ranges(0)) > tolerance) {
                     if (std::abs(ranges(1) - ranges(0)) > tolerance) {
                         is_cluster = true;
@@ -156,6 +193,7 @@ class Landmarks : public rclcpp::Node
                         cluster_row++;
                     }
                 }
+                */
             }
         }
 
