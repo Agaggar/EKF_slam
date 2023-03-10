@@ -68,6 +68,8 @@ ament_target_dependencies(
 
 include_directories(${ARMADILLO_INCLUDE_DIRS})
 target_link_libraries(slam turtlelib::turtlelib ${ARMADILLO_LIBRARIES})
+target_link_libraries(landmarks turtlelib::turtlelib ${ARMADILLO_LIBRARIES})
+target_link_libraries(circle_fit turtlelib::turtlelib ${ARMADILLO_LIBRARIES})
 
 install(TARGETS slam landmarks circle_fit
   DESTINATION lib/${PROJECT_NAME})
