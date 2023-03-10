@@ -46,7 +46,7 @@ class CircleFit : public rclcpp::Node {
         rclcpp::TimerBase::SharedPtr timer;
         mat clusters, data_points, bigZ, bigM, bigH, bigH_inv;
         arma::vec x_coor, y_coor, zi, bigA;
-        std::vector<double> means;
+        std::vector<double> means, circle;
         double zbar;
 
         /// \brief Timer callback 
@@ -68,19 +68,22 @@ class CircleFit : public rclcpp::Node {
                     means = computeMean(x_coor, y_coor);
                     // RCLCPP_INFO(get_logger(), "xMean: %.4f, yMean: %.4f", means.at(0), means.at(1));
                     data_points = arma::join_rows(x_coor, y_coor);
+                    // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
                     x_coor = shiftPoints(data_points, means).col(0);
                     y_coor = shiftPoints(data_points, means).col(1);
                     zi = distToCentroid(shiftPoints(data_points, means));
                     zbar = findMean(zi);
                     bigZ = formDataMat(zi, x_coor, y_coor);
-                    RCLCPP_ERROR_STREAM(get_logger(), "capital Z: \n" << bigZ);
+                    // RCLCPP_ERROR_STREAM(get_logger(), "capital Z: \n" << bigZ);
                     bigM = formMoment(bigZ);
-                    RCLCPP_ERROR_STREAM(get_logger(), "bigM: \n" << bigM);
+                    // RCLCPP_ERROR_STREAM(get_logger(), "bigM: \n" << bigM);
                     bigH = formConstraint(zbar);
-                    RCLCPP_ERROR_STREAM(get_logger(), "bigH: \n" << bigH);
+                    // RCLCPP_ERROR_STREAM(get_logger(), "bigH: \n" << bigH);
                     bigH_inv = bigH.i();
                     bigA = computeA(bigZ, bigH);
-                    // RCLCPP_INFO(get_logger(), "xMean: %.4f, yMean: %.4f", means.at(0), means.at(1));
+                    RCLCPP_ERROR_STREAM(get_logger(), "bigA: \n" << bigA);
+                    circle = circleEq(bigA);
+                    RCLCPP_ERROR_STREAM(get_logger(), "circle: \n" << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
                 }
             }
         }
@@ -153,31 +156,25 @@ class CircleFit : public rclcpp::Node {
             return H;
         }
 
+        /// @brief compute the column vec A to find circle equations
+        /// @param Z - all data points matrix with distances
+        /// @param H - constraint matrix
+        /// @return column vector related to circle constants
         arma::vec computeA(mat Z, mat H) {
             arma::vec S;
             mat U, V;
             arma::svd(U, S, V, Z, "std");
-            // is the minimum value always the bottom right of the diagmat(S)?
-            // U is 3x3
-            // S is 3x3
-            // V is 4x4
-            double min_S = 1e12;
-            for (size_t n = 0; n < S.n_elem; n++) {
-                if (S.at(n) < min_S) {
-                    min_S = S.at(n);
-                }
-            }
-            if (min_S < 1e-12) {
+            if (S(3) < 1e-12) {
                 return V.col(3);
             }
             else {
-                RCLCPP_ERROR_STREAM(get_logger(), "SVD: \n" << U << "\n" << S << "\n" << V);
+                // RCLCPP_ERROR_STREAM(get_logger(), "SVD: \n" << U << "\n" << S << "\n" << V);
                 mat Y = V * arma::diagmat(S) * (V.t()); // results in a 4 x 3   
                 mat Q = Y * (H.i()) * Y;
                 arma::cx_vec eigval;
                 arma::cx_mat eigvec;
                 arma::eig_gen(eigval, eigvec, Q);
-                min_S = 1e12;
+                double min_S = 1e12;
                 double index = 0;
                 for (size_t n = 0; n < eigval.n_elem; n++) {
                     if (eigval.at(n).real() < min_S && eigval.at(n).real() > 0) {
@@ -186,12 +183,13 @@ class CircleFit : public rclcpp::Node {
                     }
                 }
                 RCLCPP_ERROR_STREAM(get_logger(), "smalles positive eigenvalue vector: \n" << eigvec(index));
-                // arma::cx_ Astar = eigvec(index);
-                // find eigenvector associated with said eigenvalue (A*), then compute A 
-                // return eigvec.at(index, index) * (arma::inv(Y))
-                // temp return function
-                return V.col(3);
+                Q = arma::real(eigvec);
+                return arma::solve(Y, Q.col(index));
             }
+        }
+
+        std::vector<double> circleEq(arma::vec A) {
+            return {-A(1)/2/A(0), -A(2)/2/A(0), ((A(1)*A(1)+A(2)*A(2)-4*A(0)*A(3))/(4*A(0)*A(0)))};
         }
 };
 
