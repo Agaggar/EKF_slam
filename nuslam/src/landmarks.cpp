@@ -3,26 +3,11 @@
 ///
 /// PARAMETERS:
 ///     rate (double): frequency of timer callback (hertz), defaults to 200
-///     timestep (size_t): iterations of timer callback
-///     qt (arma::vec): current state of the robot, 3x1 vector
-///     qt_minusone (arma::vec): prev state of the robot, 3x1 vector
-///     wheel_radius (double): radius of the robot's wheels (m)
-///     wheel_track (double): radius of distance to wheels (m)
-///     cyl_radius (double): radius of obstacles (m)
-///     cyl_height (double): height of obstacles (m)
-///     q_coeff (double): scalar value to scale Q matrix - process noise
-///     r_coeff (double): scalar value to scale R matrix - sensor matrix
-///     greenbot (turtlelib::DiffDrive): diff drive object of green robot
+///     angle_increment (double): angle between consecutive readings from lidar (rad)
 /// PUBLISHES:
-///     /tf (tf2_ros::TransformBroadcaster): publish transform from map to odom and odom to green/base_footprint
-///     green/joint_states (sensor_msgs::msg::JointState): publish joint state of wheels for motion
-///     ~/odom (nav_msgs::msg::Odometry): publish odometry
-///     ~/map_obstacles (visualization_msgs::msg::MarkerArray): publish map cylinder markers to rviz
-///     green/greenpath (nav_msgs::msg::Path): publish points of where the robot has been
+///     ~/clusters (visualization_msgs::msg::MarkerArray): a way to visualize the clusters in rviz
 /// SUBSCRIBES:
-///     ~/joint_states (sensor_msgs::msg::JointState): odometry joint states for forward kinematics
-///     ~/fake_sensor (visualization_msgs::msg::MarkerArray): fake_sensor reading from robot
-///     ~/sim_lidar (sensor_msgs::msg::LaserScan): publish simulated lidar data
+///     ~/sim_lidar (sensor_msgs::msg::LaserScan): simulated lidar data
 /// SERVERS:
 ///     none
 /// CLIENTS:
@@ -108,6 +93,7 @@ class Landmarks : public rclcpp::Node
         /// \brief cluster points from ranges
         void cluster() {
             int cluster_row = 0;
+            clusters.clear();
             for (size_t index = 0; index < (ranges.n_elem - cluster_count); index++) {
                 clust_check_count = 0;
                 is_cluster = false;
@@ -128,7 +114,7 @@ class Landmarks : public rclcpp::Node
                         }
                     }
                     if (clust_check_count == 2) {
-                        RCLCPP_INFO(get_logger(), "cluster found: %ld", index);
+                        // RCLCPP_INFO(get_logger(), "cluster found: %ld", index);
                         is_cluster = true;
                     }
                 }
@@ -189,6 +175,7 @@ class Landmarks : public rclcpp::Node
             marker.color.r = 112.0 / 256.0;
             marker.color.g = 128.0 / 256.0;
             marker.color.b = 144.0 / 256.0;
+            marker.action = visualization_msgs::msg::Marker::DELETE;
             cluster_cyl.markers.push_back(marker);
         }
 
@@ -196,6 +183,7 @@ class Landmarks : public rclcpp::Node
         /// \param mark - marker id
         void update_cylinder(int mark) {
             cluster_cyl.markers.at(mark).action = visualization_msgs::msg::Marker::ADD;
+            cluster_cyl.markers.at(mark).points = {};
             for (size_t index = 1; index < clusters.at(mark).size(); index++) {
                 cluster_cyl.markers.at(mark).points.push_back(geometry_msgs::build<geometry_msgs::msg::Point>().
                                                               x(clusters.at(mark).at(index) * cos(clusters.at(mark).at(0) * angle_increment)).
