@@ -29,6 +29,7 @@ find_package(visualization_msgs REQUIRED)
 
 add_executable(slam src/ekf_slam.cpp)
 add_executable(landmarks src/landmarks.cpp)
+add_executable(circle_fit src/circle_fitting.cpp)
 # target_include_directories(ekf_slam PUBLIC
 #   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 #   $<INSTALL_INTERFACE:include>)
@@ -58,10 +59,17 @@ ament_target_dependencies(
   Armadillo
 )
 
+ament_target_dependencies(
+  circle_fit
+  rclcpp
+  visualization_msgs
+  Armadillo
+)
+
 include_directories(${ARMADILLO_INCLUDE_DIRS})
 target_link_libraries(slam turtlelib::turtlelib ${ARMADILLO_LIBRARIES})
 
-install(TARGETS slam landmarks
+install(TARGETS slam landmarks circle_fit
   DESTINATION lib/${PROJECT_NAME})
 
 install(
