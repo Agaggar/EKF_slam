@@ -296,6 +296,7 @@ private:
   std::vector<std::vector<double>> poss_collision;
   std::vector<float> range_lidar;
   int count = 0;
+  double phi_cyl = 0.0, dist_cyl = 0.0;
 
   /// \brief Timer callback
   void timer_callback()
@@ -436,8 +437,15 @@ private:
       }
       else {
         measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
-        relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
-        relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
+        phi_cyl = turtlelib::normalize_angle(atan2((all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1)), (all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0))));
+        dist_cyl = distance(redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y);
+        relative_x = dist_cyl * sin(phi_cyl + redbot.getCurrentConfig().at(2));
+        relative_y = dist_cyl * cos(phi_cyl + redbot.getCurrentConfig().at(2));
+        // if (loop < (all_cyl.markers.size() - 2)) {
+        //   RCLCPP_INFO(get_logger(), "relative x, y %ld: %.4f, %.4f", loop, relative_x, relative_y);
+        // }
+        // relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
+        // relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
         measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_obstacle_noise(get_random());
         measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_obstacle_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
