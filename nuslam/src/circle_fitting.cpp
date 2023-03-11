@@ -63,10 +63,10 @@ class CircleFit : public rclcpp::Node {
                     y_coor.zeros(clus.markers.at(loop).points.size());
                     for (size_t index = 0; index < clus.markers.at(loop).points.size(); index++) {
                         x_coor(index) = clus.markers.at(loop).points.at(index).x;
-                        y_coor(index) = clus.markers.at(loop).points.at(index).x;
+                        y_coor(index) = clus.markers.at(loop).points.at(index).y;
                     }
                     means = computeMean(x_coor, y_coor);
-                    // RCLCPP_INFO(get_logger(), "xMean: %.4f, yMean: %.4f", means.at(0), means.at(1));
+                    // RCLCPP_INFO(get_logger(), "xMean: %.7f, yMean: %.7f", means.at(0), means.at(1));
                     data_points = arma::join_rows(x_coor, y_coor);
                     // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
                     x_coor = shiftPoints(data_points, means).col(0);
@@ -81,9 +81,9 @@ class CircleFit : public rclcpp::Node {
                     // RCLCPP_ERROR_STREAM(get_logger(), "bigH: \n" << bigH);
                     bigH_inv = bigH.i();
                     bigA = computeA(bigZ, bigH);
-                    RCLCPP_ERROR_STREAM(get_logger(), "bigA: \n" << bigA);
+                    // RCLCPP_ERROR_STREAM(get_logger(), "bigA: \n" << bigA);
                     circle = circleEq(bigA);
-                    RCLCPP_ERROR_STREAM(get_logger(), "circle: \n" << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
+                    // RCLCPP_ERROR_STREAM(get_logger(), "circle: \n" << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
                 }
             }
         }
@@ -163,7 +163,8 @@ class CircleFit : public rclcpp::Node {
         arma::vec computeA(mat Z, mat H) {
             arma::vec S;
             mat U, V;
-            arma::svd(U, S, V, Z, "std");
+            arma::svd(U, S, V, Z);
+            // RCLCPP_ERROR_STREAM(get_logger(), "SVD: \n" << U << "\n" << S << "\n" << V);
             if (S(3) < 1e-12) {
                 return V.col(3);
             }
@@ -182,7 +183,7 @@ class CircleFit : public rclcpp::Node {
                         index = n;
                     }
                 }
-                RCLCPP_ERROR_STREAM(get_logger(), "smalles positive eigenvalue vector: \n" << eigvec(index));
+                // RCLCPP_ERROR_STREAM(get_logger(), "smallest positive eigenvalue vector: \n" << eigvec(index));
                 Q = arma::real(eigvec);
                 return arma::solve(Y, Q.col(index));
             }
