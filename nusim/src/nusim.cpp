@@ -439,11 +439,11 @@ private:
         measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
         phi_cyl = turtlelib::normalize_angle(atan2((all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1)), (all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0))));
         dist_cyl = distance(redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y);
-        relative_x = dist_cyl * sin(phi_cyl + redbot.getCurrentConfig().at(2));
-        relative_y = dist_cyl * cos(phi_cyl + redbot.getCurrentConfig().at(2));
-        // if (loop < (all_cyl.markers.size() - 2)) {
-        //   RCLCPP_INFO(get_logger(), "relative x, y %ld: %.4f, %.4f", loop, relative_x, relative_y);
-        // }
+        relative_x = dist_cyl * cos(phi_cyl + redbot.getCurrentConfig().at(2));
+        relative_y = dist_cyl * sin(phi_cyl + redbot.getCurrentConfig().at(2));
+        if (loop < (all_cyl.markers.size() - 2)) {
+          RCLCPP_INFO(get_logger(), "%ld: robo_angle: %.4f, angle: %.4f, sum: %.4f, dist: %.4f, cos: %.4f, sin: %.4f", loop, redbot.getCurrentConfig().at(2), phi_cyl, (phi_cyl + redbot.getCurrentConfig().at(2)), dist_cyl, cos(phi_cyl + redbot.getCurrentConfig().at(2)), sin(phi_cyl + redbot.getCurrentConfig().at(2)));
+        }
         // relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
         // relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
         measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_obstacle_noise(get_random());
