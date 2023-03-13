@@ -64,6 +64,7 @@ ament_target_dependencies(
   rclcpp
   visualization_msgs
   Armadillo
+  turtlelib
 )
 
 include_directories(${ARMADILLO_INCLUDE_DIRS})
