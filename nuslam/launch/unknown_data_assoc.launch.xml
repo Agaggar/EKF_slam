@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find-pkg-share nuslam)/launch/slam.launch.xml" 
+             args="--ros-args -p data_associate:='true'" />
+</launch>

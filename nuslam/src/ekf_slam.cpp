@@ -65,7 +65,8 @@ class Ekf_slam : public rclcpp::Node
       cyl_height(0.25),
       q_coeff(0.1),
       r_coeff(1.0),
-      greenbot()
+      greenbot(),
+      data_associate(false)
     {
       declare_parameter("wheel_radius", rclcpp::ParameterValue(wheel_radius));
       declare_parameter("track_width", rclcpp::ParameterValue(track_width));
@@ -80,6 +81,8 @@ class Ekf_slam : public rclcpp::Node
       get_parameter("slam.q_coeff", q_coeff);
       declare_parameter("slam.r_coeff", rclcpp::ParameterValue(r_coeff));
       get_parameter("slam.r_coeff", r_coeff);
+      declare_parameter("data_associate", rclcpp::ParameterValue(data_associate));
+      get_parameter("data_associate", data_associate);
       greenbot.setWheelRadius(wheel_radius);
       greenbot.setWheelTrack(track_width);
 
@@ -110,6 +113,7 @@ class Ekf_slam : public rclcpp::Node
     mat Q, Qbar, sys_cov_bar, sys_cov, sys_cov_minusone, Hj, Kj, R, Rj;
     double wheel_radius, track_width, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
+    bool data_associate;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr map_obs_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
@@ -123,7 +127,8 @@ class Ekf_slam : public rclcpp::Node
     sensor_msgs::msg::JointState js_green;
     nav_msgs::msg::Odometry odom_msg;
     double dxj, dyj, dj, prev_theta;
-    size_t poss_obs = 5; // container for total possible number of obstacles
+    size_t poss_obs = 5; // container for total possible number of obstacles 
+    size_t bigN; // = poss_obs - 1; // N for data association
     visualization_msgs::msg::Marker marker;
     visualization_msgs::msg::MarkerArray all_cyl;
     bool found = false;
@@ -146,6 +151,7 @@ class Ekf_slam : public rclcpp::Node
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         mt.zeros(2*poss_obs);
         sys_cov_minusone.zeros(3+2*poss_obs, 3+2*poss_obs);
+        bigN = 0;
         for (size_t n = 0; n < poss_obs; n++) {
           sys_cov_minusone(3+2*n,3+2*n) = 1e9; // large value for unknown diagonal measurements
           sys_cov_minusone(3+2*n+1,3+2*n+1) = 1e9; // large value for unknown diagonal measurements
@@ -278,9 +284,17 @@ class Ekf_slam : public rclcpp::Node
             zeta_predict(3 + 2*landmark_id + 1) = zeta_predict(2) + rj*sin(phij + zeta_predict(0)); // update measured landmark y
             // mt_minusone(2*landmark_id) = zeta_predict(1) + rj*cos(phij + zeta_predict(0)); // update measured landmark x
             // mt_minusone(2*landmark_id + 1) = zeta_predict(2) + rj*sin(phij + zeta_predict(0)); // update measured landmark y
+            bigN += 1;
           }
           zjt = {rj, phij};
           measurement_model(landmark_id);
+          zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
+          zeta_update(0) = turtlelib::normalize_angle(zeta_update(0));
+          // RCLCPP_ERROR_STREAM(get_logger(), "zeta_update: \n" << zeta_update);
+          zeta_predict = zeta_update;
+          // RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 3: \n" << zeta_predict);
+          sys_cov = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+          sys_cov_bar = sys_cov;
         }
       }
 
@@ -319,15 +333,15 @@ class Ekf_slam : public rclcpp::Node
       Rj(1, 0) = R(2*landmark_id+1, 2*landmark_id);
       Rj(1, 1) = R(2*landmark_id+1, 2*landmark_id+1);
       Kj = sys_cov_bar*(Hj.t())*((Hj*sys_cov_bar*(Hj.t()) + Rj).i());
-      // RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
-      zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
-      zeta_update(0) = turtlelib::normalize_angle(zeta_update(0));
-      // RCLCPP_ERROR_STREAM(get_logger(), "zeta_update: \n" << zeta_update);
-      zeta_predict = zeta_update;
-      // RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 3: \n" << zeta_predict);
-      sys_cov = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
-      sys_cov_bar = sys_cov;
-      // RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
+      // // RCLCPP_ERROR_STREAM(get_logger(), "Kj: \n" << Kj);
+      // zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
+      // zeta_update(0) = turtlelib::normalize_angle(zeta_update(0));
+      // // RCLCPP_ERROR_STREAM(get_logger(), "zeta_update: \n" << zeta_update);
+      // zeta_predict = zeta_update;
+      // // RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 3: \n" << zeta_predict);
+      // sys_cov = (mat(3+2*poss_obs, 3+2*poss_obs, arma::fill::eye) - Kj*Hj) * sys_cov_bar;
+      // sys_cov_bar = sys_cov;
+      // // RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
     }
 
     /// \brief helper function to create Hj
@@ -344,6 +358,32 @@ class Ekf_slam : public rclcpp::Node
       Hj(0, 3+2*landmark_id+1) = dyj/sqrt(dj);
       Hj(1, 3+2*landmark_id) = -dyj/dj;
       Hj(1, 3+2*landmark_id+1) = dxj/dj;
+    }
+
+    void dataAssociate(size_t j) {
+      vec landmark_j = {getLandmarkX(j), getLandmarkY(j)};
+      vec landmark_temp;
+      mat cov_k;
+      double dk;
+      for (size_t measurement = 0; measurement < bigN; measurement++) {
+        landmark_temp = {getLandmarkX(measurement), getLandmarkY(measurement)};
+        for (size_t landmark_k = 0; landmark_k <= bigN; landmark_k++) {
+          measurement_model(landmark_k);
+          cov_k = Hj * sys_cov_bar * (Hj.t()) + Rj;
+          dk = mahalanobis(cov_k, landmark_temp, zhat_jt);
+        }
+      }
+    }
+
+    /// @brief compute mahalanobis distance
+    /// @param sys_cov - covariance matrix
+    /// @param xi - measurement
+    /// @param xk - prediction
+    /// @param temp - temporary matrix (identity 2x2 for 2D application (r, theta))
+    /// @return mahalanobis distance
+    double mahalanobis(mat sys_cov, vec xi, vec xk, mat temp = arma::eye(2, 2)) {
+      temp = ((xi - xk).t()) * (sys_cov.i()) * ((xi - xk).t());
+      return temp(0, 0);
     }
 
     /// \brief helper function to check distance between points
