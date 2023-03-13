@@ -68,6 +68,11 @@ class CircleFit : public rclcpp::Node {
                     means = computeMean(x_coor, y_coor);
                     // RCLCPP_INFO(get_logger(), "xMean: %.7f, yMean: %.7f", means.at(0), means.at(1));
                     data_points = arma::join_rows(x_coor, y_coor);
+                    // test 1
+                    // data_points = {{1, 7}, {2, 6}, {5, 8}, {7, 7}, {9, 5}, {3, 7}};
+                    // test 2
+                    // data_points = {{-1,0}, {-0.3,-0.06}, {0.3, 0.1}, {1, 0}};
+                    // means = computeMean(data_points.col(0), data_points.col(1));
                     // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
                     x_coor = shiftPoints(data_points, means).col(0);
                     y_coor = shiftPoints(data_points, means).col(1);
@@ -166,7 +171,7 @@ class CircleFit : public rclcpp::Node {
             arma::svd(U, S, V, Z);
             // RCLCPP_ERROR_STREAM(get_logger(), "SVD: \n" << U << "\n" << S << "\n" << V);
             if (S(3) < 1e-12) {
-                return V.col(3);
+                return V.row(3).t();
             }
             else {
                 // RCLCPP_ERROR_STREAM(get_logger(), "SVD: \n" << U << "\n" << S << "\n" << V);
@@ -190,7 +195,7 @@ class CircleFit : public rclcpp::Node {
         }
 
         std::vector<double> circleEq(arma::vec A) {
-            return {-A(1)/2/A(0), -A(2)/2/A(0), ((A(1)*A(1)+A(2)*A(2)-4*A(0)*A(3))/(4*A(0)*A(0)))};
+            return {-A(1)/2/A(0), -A(2)/2/A(0), sqrt((A(1)*A(1)+A(2)*A(2)-4*A(0)*A(3))/(4*A(0)*A(0)))};
         }
 };
 
