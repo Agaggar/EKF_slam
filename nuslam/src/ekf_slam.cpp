@@ -198,7 +198,7 @@ class Ekf_slam : public rclcpp::Node
         current_point.pose.position.y = greenbot.getCurrentConfig().at(1);
         green_path.poses.push_back(current_point);
         green_path_pub->publish(green_path);
-        zeta_predict.save("zeta_" + std::to_string(timestep) + ".txt", arma_ascii);
+        // zeta_predict.save("zeta_" + std::to_string(timestep) + ".txt", arma_ascii);
         // mt_minusone.save("map_" + std::to_string(timestep) + ".txt", arma_ascii);
       }
 
@@ -285,11 +285,6 @@ class Ekf_slam : public rclcpp::Node
       }
 
       qt_minusone = {zeta_predict(0), zeta_predict(1), zeta_predict(2)};
-      // for (size_t landmark_id = 0; landmark_id < poss_obs; landmark_id++) {
-      //   mt_minusone(2*landmark_id) = zeta_predict(3 + 2*landmark_id);
-      //   mt_minusone(2*landmark_id + 1) = zeta_predict(3 + 2*landmark_id + 1);
-      // }
-      // RCLCPP_ERROR_STREAM(get_logger(), "new zeta_predict: \n" << zeta_predict);
     }
 
     /// \brief helper function to create framework for bigAt
@@ -314,7 +309,7 @@ class Ekf_slam : public rclcpp::Node
       // RCLCPP_ERROR_STREAM(get_logger(), "mt_minusone: \n" << mt_minusone);
       // RCLCPP_ERROR_STREAM(get_logger(), "zeta_predict 1: \n" << zeta_predict);
       // RCLCPP_INFO(get_logger(), "dx: %.4f, dy: %.4f, d: %.4f, phi_calc: %.4f, phi_acc: %.4f", dxj, dyj, dj, atan2(dyj, dxj), zeta_predict(0));
-      RCLCPP_ERROR_STREAM(get_logger(), "z, zhat: \n" << zjt << "\n" << zhat_jt);
+      // RCLCPP_ERROR_STREAM(get_logger(), "z, zhat: \n" << zjt << "\n" << zhat_jt);
       // RCLCPP_INFO(get_logger(), "distance: %.4f, angle: %.4f", rj, phij);
       Hj.zeros(2, 3+2*poss_obs);
       populate_Hj(landmark_id);
@@ -454,7 +449,6 @@ class Ekf_slam : public rclcpp::Node
       else {
         all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
       }
-      // all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
     }
   }
 
