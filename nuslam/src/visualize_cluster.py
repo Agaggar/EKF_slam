@@ -1,5 +1,20 @@
 import matplotlib.pyplot as plt
 import numpy as np
+
+x = []
+y = []
+f = open('data.txt','r')
+for row in f:
+    row = row.split('  ')
+    x.append(float(row[1]))
+    y.append(float(row[2]))
+print(x)
+print(y)
+plt.plot(x, y, 'or')
+plt.autoscale()
+plt.show()
+
+'''
 landmark_0x = []
 landmark_0y = []
 landmark_1x = []
@@ -35,3 +50,4 @@ plt.ylabel('Position', fontsize = 12)
 plt.title('Landmarks', fontsize = 20)
 plt.legend()
 plt.show()
+'''
