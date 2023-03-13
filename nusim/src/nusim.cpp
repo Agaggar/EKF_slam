@@ -297,6 +297,8 @@ private:
   std::vector<float> range_lidar;
   int count = 0;
   double phi_cyl = 0.0, dist_cyl = 0.0;
+  turtlelib::Transform2D Trw; // transformation from world to robot
+  turtlelib::Vector2D obst_r; // obstacle x and y in robot frame
 
   /// \brief Timer callback
   void timer_callback()
@@ -430,6 +432,8 @@ private:
     measured_cyl = all_cyl;
     relative_x = redbot.getCurrentConfig().at(0);
     relative_y = redbot.getCurrentConfig().at(1);
+    Trw = {{redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1)}, redbot.getCurrentConfig().at(2)};
+    Trw = Trw.inv();
     for (size_t loop = 0; loop < all_cyl.markers.size(); loop++) {
       if (distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) > max_range || 
           distance(relative_x, relative_y, all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y) < range_min) {
@@ -437,17 +441,10 @@ private:
       }
       else {
         measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
-        phi_cyl = turtlelib::normalize_angle(atan2((all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1)), (all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0))));
-        dist_cyl = distance(redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y);
-        relative_x = dist_cyl * cos(phi_cyl + redbot.getCurrentConfig().at(2));
-        relative_y = dist_cyl * sin(phi_cyl + redbot.getCurrentConfig().at(2));
-        if (loop < (all_cyl.markers.size() - 2)) {
-          RCLCPP_INFO(get_logger(), "%ld: robo_angle: %.4f, angle: %.4f, sum: %.4f, dist: %.4f, cos: %.4f, sin: %.4f", loop, redbot.getCurrentConfig().at(2), phi_cyl, (phi_cyl + redbot.getCurrentConfig().at(2)), dist_cyl, cos(phi_cyl + redbot.getCurrentConfig().at(2)), sin(phi_cyl + redbot.getCurrentConfig().at(2)));
-        }
-        // relative_x = all_cyl.markers.at(loop).pose.position.x - redbot.getCurrentConfig().at(0);
-        // relative_y = all_cyl.markers.at(loop).pose.position.y - redbot.getCurrentConfig().at(1);
-        measured_cyl.markers.at(loop).pose.position.x = relative_x + gauss_dist_obstacle_noise(get_random());
-        measured_cyl.markers.at(loop).pose.position.y = relative_y + gauss_dist_obstacle_noise(get_random());
+        
+        obst_r = Trw(turtlelib::Vector2D {all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
+        measured_cyl.markers.at(loop).pose.position.x = obst_r.x + gauss_dist_obstacle_noise(get_random());
+        measured_cyl.markers.at(loop).pose.position.y = obst_r.y + gauss_dist_obstacle_noise(get_random());
         measured_cyl.markers.at(loop).color.g = 172.0 / 256.0; // change color to yellow
       }
       if (loop >= (all_cyl.markers.size() - 2)) {
