@@ -33,13 +33,16 @@ class Landmarks : public rclcpp::Node
     Landmarks()
     : Node("landmarks"),
     rate(200.0),
-    angle_increment(0.01745329238474369)
+    angle_increment(0.01745329238474369),
+    cluster_count(6)
     {
 
         declare_parameter("rate", rclcpp::ParameterValue(rate));
         get_parameter("rate", rate);
         declare_parameter("angle_increment", rclcpp::ParameterValue(angle_increment));
         get_parameter("angle_increment", angle_increment);
+        declare_parameter("cluster_count", rclcpp::ParameterValue(cluster_count));
+        get_parameter("cluster_count", cluster_count);
 
         lidar_sub = create_subscription<sensor_msgs::msg::LaserScan>(
         "~/sim_lidar", 10, std::bind(
@@ -54,13 +57,13 @@ class Landmarks : public rclcpp::Node
     private:
         double rate, angle_increment;
         size_t poss_obs;
+        int cluster_count; // number of points before its considered a cluster
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub;
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_pub;
         rclcpp::TimerBase::SharedPtr timer;
         vec ranges = vec(359, arma::fill::zeros);
         std::vector<std::vector<float>> clusters;
         // mat clusters = mat(359, 359, -1*arma::fill::ones);
-        int cluster_count = 4; // number of points before its considered a cluster
         int clust_check_count = 0;
         bool is_cluster = false;
         double tolerance = 0.1;
@@ -206,8 +209,8 @@ class Landmarks : public rclcpp::Node
             marker.header.stamp = get_clock()->now();
             marker.id = mark;
             marker.type = 6;
-            marker.scale.x = 0.03;
-            marker.scale.y = 0.03;
+            marker.scale.x = 0.01;
+            marker.scale.y = 0.01;
             marker.scale.z = 0.5;
             marker.color.a = 1.0;
             marker.color.r = 112.0 / 256.0;
