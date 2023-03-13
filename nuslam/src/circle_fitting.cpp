@@ -18,6 +18,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "builtin_interfaces/msg/time.hpp"
+#include "turtlelib/rigid2d.hpp"
 #include <armadillo>
 #include <iostream>
 
@@ -45,9 +46,9 @@ class CircleFit : public rclcpp::Node {
         rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_sub;
         rclcpp::TimerBase::SharedPtr timer;
         mat clusters, data_points, bigZ, bigM, bigH, bigH_inv;
-        arma::vec x_coor, y_coor, zi, bigA;
-        std::vector<double> means, circle;
-        double zbar;
+        arma::vec x_coor, y_coor, zi, bigA, angles;
+        std::vector<double> means, circle, statistics;
+        double zbar, sum, rmse;
 
         /// \brief Timer callback 
         void timer_callback() {
@@ -80,7 +81,7 @@ class CircleFit : public rclcpp::Node {
                     zbar = findMean(zi);
                     bigZ = formDataMat(zi, x_coor, y_coor);
                     // RCLCPP_ERROR_STREAM(get_logger(), "capital Z: \n" << bigZ);
-                    bigM = formMoment(bigZ);
+                    // bigM = formMoment(bigZ);
                     // RCLCPP_ERROR_STREAM(get_logger(), "bigM: \n" << bigM);
                     bigH = formConstraint(zbar);
                     // RCLCPP_ERROR_STREAM(get_logger(), "bigH: \n" << bigH);
@@ -88,6 +89,14 @@ class CircleFit : public rclcpp::Node {
                     bigA = computeA(bigZ, bigH);
                     // RCLCPP_ERROR_STREAM(get_logger(), "bigA: \n" << bigA);
                     circle = circleEq(bigA);
+                    rmse = RMSE(circle, x_coor, y_coor);
+                    // RCLCPP_INFO(get_logger(), "rmse: %.6f", rmse);
+                    statistics = computeStats(x_coor, y_coor);
+                    if (statistics.at(0) > turtlelib::PI/4 && statistics.at(0) < 3*turtlelib::PI/4 && statistics.at(1) < 0.15) {
+                        RCLCPP_INFO(get_logger(), "IS CIRCLE!");
+                    }
+                    RCLCPP_INFO(get_logger(), "mean: %.4f, std: %.4f", statistics.at(0), statistics.at(1));
+                    
                     // RCLCPP_ERROR_STREAM(get_logger(), "circle: \n" << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
                 }
             }
@@ -196,6 +205,33 @@ class CircleFit : public rclcpp::Node {
 
         std::vector<double> circleEq(arma::vec A) {
             return {-A(1)/2/A(0), -A(2)/2/A(0), sqrt((A(1)*A(1)+A(2)*A(2)-4*A(0)*A(3))/(4*A(0)*A(0)))};
+        }
+
+        double RMSE(std::vector<double> circle, vec xcoor, vec ycoor) {
+            sum = 0;
+            for (size_t i = 0; i < xcoor.n_elem; i++) {
+                sum += pow(((xcoor(i) - circle.at(0))*(xcoor(i) - circle.at(0)) + (ycoor(i) - circle.at(1))*(ycoor(i) - circle.at(1)) - circle.at(2)*circle.at(2)), 2);
+            }
+            return sqrt(1.0 / xcoor.n_elem * sum);
+        }
+
+        std::vector<double> computeStats(vec x_coor, vec y_coor) {
+            angles = arma::zeros(x_coor.n_elem - 2);
+            for (size_t loop = 1; loop < (x_coor.n_elem - 2); loop++) {
+                angles(loop-1) = (atan2(distance(x_coor(0), y_coor(0), x_coor(loop), y_coor(loop)),
+                                        distance(x_coor(x_coor.n_elem - 1), y_coor(x_coor.n_elem - 1), x_coor(loop), y_coor(loop))));
+            }
+            return {arma::mean(angles), arma::stddev(angles)};
+        }
+
+        /// \brief helper function to check distance between points
+        /// \param origin_x - current x coordinate
+        /// \param origin_y - current y coordinate
+        /// \param point_x - target x coordinate
+        /// \param point_y - target y coordinate
+        /// \return distance
+        double distance(double origin_x, double origin_y, double point_x, double point_y) {
+            return sqrt(pow((origin_x - point_x), 2.0) + pow((origin_y - point_y), 2.0));
         }
 };
 
