@@ -1,5 +1,6 @@
 <launch>
     <include file="$(find-pkg-share nuslam)/launch/slam.launch.xml" >
         <arg name='data_associate' value='true' />
+        <arg name='min_num_associate' value='5' />
     </include>
 </launch>
