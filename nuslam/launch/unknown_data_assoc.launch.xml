@@ -5,7 +5,7 @@
         <arg name='use_rviz' value='false' />
     </include >
     <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='6' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
+        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
         <remap from="~/sim_lidar" to="nusim/sim_lidar" />
     </node>
     <node pkg="nuslam" exec="circle_fit" >
