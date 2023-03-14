@@ -192,15 +192,18 @@ class Ekf_slam : public rclcpp::Node
           wheel_rad = {0.0, 0.0};
         }
       }
+
       t_odom_green.header.stamp = get_clock()->now();
       t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
       t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
-      tf2::Quaternion q;
       prev_theta = greenbot.getCurrentConfig().at(2);
       q.setRPY(0, 0, greenbot.getCurrentConfig().at(2));
-      q.normalize();
-      q_geom = tf2::toMsg(q);
-      t_odom_green.transform.rotation = q_geom;
+      t_odom_green.transform.rotation.x = q.x();
+      t_odom_green.transform.rotation.y = q.y();
+      t_odom_green.transform.rotation.z = q.z();
+      t_odom_green.transform.rotation.w = q.w();
+      // q_geom = tf2::toMsg(q);
+      // t_odom_green.transform.rotation = q_geom;
 
       if (timestep % 50 == 0) {
         green_path.header.stamp = get_clock()->now();
