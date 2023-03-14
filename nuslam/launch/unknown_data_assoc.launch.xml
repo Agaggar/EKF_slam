@@ -2,5 +2,15 @@
     <include file="$(find-pkg-share nuslam)/launch/slam.launch.xml" >
         <arg name='data_associate' value='true' />
         <arg name='min_num_associate' value='5' />
-    </include>
+        <arg name='use_rviz' value='false' />
+    </include >
+    <node pkg="nuslam" exec="landmarks" 
+        args="--ros-args -p cluster_count:='6' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
+        <remap from="~/sim_lidar" to="nusim/sim_lidar" />
+    </node>
+    <node pkg="nuslam" exec="circle_fit" >
+        <remap from="~/clusters" to="landmarks/clusters" />
+    </node>
+    <node pkg="rviz2" exec="rviz2" name="rviz2" 
+        args="-d $(find-pkg-share nuslam)/config/all_slam.rviz" />
 </launch>
