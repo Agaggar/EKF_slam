@@ -194,8 +194,8 @@ class Ekf_slam : public rclcpp::Node
       }
 
       t_odom_green.header.stamp = get_clock()->now();
-      t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
-      t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
+      t_odom_green.transform.translation.x = 1.0;
+      t_odom_green.transform.translation.y = 1.0;
       prev_theta = greenbot.getCurrentConfig().at(2);
       q.setRPY(0, 0, greenbot.getCurrentConfig().at(2));
       t_odom_green.transform.rotation.x = q.x();
@@ -235,6 +235,8 @@ class Ekf_slam : public rclcpp::Node
       t_mo.header.stamp = get_clock()->now();
       t_mo.transform.translation.x = T_mo.translation().x;
       t_mo.transform.translation.y = T_mo.translation().y;
+      // t_mo.transform.translation.x = 1.0;
+      // t_mo.transform.translation.y = 1.0;
       q.setRPY(0, 0, turtlelib::normalize_angle(T_mo.rotation()));
       t_mo.transform.rotation.x = q.x();
       t_mo.transform.rotation.y = q.y();
