@@ -5,7 +5,7 @@ This package is designed to do ekf slam to correct the position discrepancy betw
 
 ### Launchfile descriptions
 * simply run `ros2 launch nuslam slam.launch.xml cmd_src:='teleop'` to launch the slam node, along with necessary rviz files and the turtlebot teleop keyboard to control the redbot in rviz
-* run `ros2 launch nuslam landmark_detect.launch.xml cmd_src:='teleop' use_rviz:='false'` to launch with landmark clustering
+* run `ros2 launch nuslam landmark_detect.launch.xml cmd_src:='teleop' rviz_landmarks:='true'` to launch with landmark clustering
 * run `ros2 launch nuslam unknown_data_assoc.launch.xml cmd_src:='teleop'` to launch with data association
 
 ### Parameters
