@@ -441,7 +441,7 @@ private:
       }
       else {
         measured_cyl.markers.at(loop).header.stamp = get_clock()->now();
-        
+        measured_cyl.markers.at(loop).header.frame_id = "red/base_footprint";
         obst_r = Trw(turtlelib::Vector2D {all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y});
         measured_cyl.markers.at(loop).pose.position.x = obst_r.x + gauss_dist_obstacle_noise(get_random());
         measured_cyl.markers.at(loop).pose.position.y = obst_r.y + gauss_dist_obstacle_noise(get_random());
