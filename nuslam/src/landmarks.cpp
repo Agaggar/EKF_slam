@@ -32,7 +32,7 @@ class Landmarks : public rclcpp::Node
     public:
     Landmarks()
     : Node("landmarks"),
-    rate(200.0),
+    rate(5.0),
     angle_increment(0.01745329238474369),
     cluster_count(6)
     {
@@ -101,7 +101,8 @@ class Landmarks : public rclcpp::Node
                 clust_check_count = 0;
                 is_cluster = false;
                 // are cluster_count (3) consecutive values nonzero?
-                for (int point = 0; point < cluster_count; point++) {
+                // #TODO: check if at least cluster_count are together. bc if we're close to the obstacle, don't want to make 10 obstacles if there are 10*clusters there
+                for (size_t point = 0; point < cluster_count; point++) {
                     // RCLCPP_INFO(get_logger(), "index: %ld", index);
                     if (ranges(index+point) > 0.0) {
                         clust_check_count++;
@@ -111,7 +112,7 @@ class Landmarks : public rclcpp::Node
                 if (clust_check_count == cluster_count) {
                     clust_check_count = 0;
                     // RCLCPP_INFO(get_logger(), "points: %.2f, %.2f, %.2f", ranges(index+1), ranges(index), std::abs(ranges(index+1) - ranges(index)));
-                    for (int point = 0; point < (cluster_count - 1); point++) {
+                    for (size_t point = 0; point < (cluster_count - 1); point++) {
                         if (std::abs(ranges(index+point+1) - ranges(index+point)) < tolerance) {
                             clust_check_count++;
                         }
@@ -123,7 +124,7 @@ class Landmarks : public rclcpp::Node
                 }
                 if (is_cluster) {
                     clusters.push_back(std::vector<float>{(float) index}); // the first element of a row is the angle value of where it was measured
-                    for (int point = 0; point < cluster_count; point++) {
+                    for (size_t point = 0; point < cluster_count; point++) {
                         clusters.at(cluster_row).push_back(ranges(index + point));
                     }
                     index += (cluster_count - 1); // skip the next 2 (+1) points
@@ -133,7 +134,6 @@ class Landmarks : public rclcpp::Node
             is_cluster = false;
             // it's possible that the scan wrapped around, and a cluster is formed from the last n number of points
             if ((ranges(ranges.n_elem - 1) != 0.0) && (ranges(0) != 0.0)) {
-                // last point, and first 2 points
                 std::vector<double> wrap_around;
                 for (int loop = -cluster_count; loop < cluster_count; loop++) {
                     if (loop < 0) {
@@ -146,7 +146,7 @@ class Landmarks : public rclcpp::Node
                 clust_check_count = 0;
                 int first = 0;
                 // RCLCPP_INFO(get_logger(), "points: %.2f, %.2f, %.2f", ranges(index+1), ranges(index), std::abs(ranges(index+1) - ranges(index)));
-                for (int point = 0; point < (wrap_around.size() - 1); point++) {
+                for (size_t point = 0; point < (wrap_around.size() - 1); point++) {
                     if ((std::abs(wrap_around.at(point+1) - wrap_around.at(point)) < tolerance) && 
                         (wrap_around.at(point) > 0)) {
                         if (clust_check_count == 0) {
@@ -156,47 +156,20 @@ class Landmarks : public rclcpp::Node
                     }
                 }
                 if (clust_check_count == (cluster_count - 1)) {
-                    RCLCPP_INFO(get_logger(), "cluster found at the end!");
-                    if (first < 0) {
-                        first = ranges.n_elem - 1 + first;
+                    if (first < cluster_count) {
+                        first = ranges.n_elem - 1 - first;
                     }
                     else {
+                        RCLCPP_INFO(get_logger(), "cluster found at the end!");
                         clusters.push_back(std::vector<float>{(float) first}); // the first element of a row is the angle value of where it was measured
                     }
-                    for (int point = 0; point < cluster_count; point++) {
+                    for (size_t point = 0; point < cluster_count; point++) {
                         if ((first + point + 1) == ranges.n_elem) {
                             first = 0;
                         }
                         clusters.at(cluster_row).push_back(ranges(first + point));
                     }
                 }
-                // cluster_row++;
-                /*
-                if (std::abs(ranges(ranges.n_elem - 1) - ranges(0)) > tolerance) {
-                    if (std::abs(ranges(1) - ranges(0)) > tolerance) {
-                        is_cluster = true;
-                    }
-                }
-                if (is_cluster) {
-                    clusters.push_back(std::vector<float>{(float) ranges.n_elem - 1});
-                    clusters.at(cluster_row).push_back(ranges(ranges.n_elem - 1));
-                    clusters.at(cluster_row).push_back(ranges(0));
-                    clusters.at(cluster_row).push_back(ranges(1));
-                    cluster_row++;
-                } // last 2 points, and first point
-                else if (std::abs(ranges(ranges.n_elem - 2) - ranges(ranges.n_elem - 1)) > tolerance) {
-                    if (std::abs(ranges(ranges.n_elem - 1) - ranges(0)) > tolerance) {
-                        is_cluster = true;
-                    }
-                    if (is_cluster) {
-                        clusters.push_back(std::vector<float>{(float) ranges.n_elem - 2});
-                        clusters.at(cluster_row).push_back(ranges(ranges.n_elem - 2));
-                        clusters.at(cluster_row).push_back(ranges(ranges.n_elem - 1));
-                        clusters.at(cluster_row).push_back(ranges(0));
-                        cluster_row++;
-                    }
-                }
-                */
             }
         }
 
