@@ -1,6 +1,5 @@
 <launch>
     <include file="$(find-pkg-share nuslam)/launch/slam.launch.xml" >
-        <arg name='data_associate' value='true' />
         <arg name='use_rviz' value='false' />
         <arg name='use_lidar' value='true' />
     </include >
