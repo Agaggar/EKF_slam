@@ -78,6 +78,9 @@ Transform2D & Transform2D::operator*=(const Transform2D & rhs)
   temp.r32 = r31 * rhs.r12 + r32 * rhs.r22 + r33 * rhs.r32;
   temp.r33 = r31 * rhs.r13 + r32 * rhs.r23 + r33 * rhs.r33;
   temp.rot = acos(temp.r11);
+  if (isnan(temp.rot)) {
+    temp.rot = 0.0;
+  }
   *this = temp;
   return *this;
 }
