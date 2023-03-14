@@ -29,7 +29,7 @@ class CircleFit : public rclcpp::Node {
     public:
     CircleFit()
     : Node("circle_fit"),
-    rate(200.0)
+    rate(5.0)
     {
         declare_parameter("rate", rclcpp::ParameterValue(rate));
         get_parameter("rate", rate);
@@ -111,6 +111,15 @@ class CircleFit : public rclcpp::Node {
                         actual_circles.markers.at(loop).color.r = 75.0 / 256.0;
                         actual_circles.markers.at(loop).color.g = 83.0 / 256.0;
                         actual_circles.markers.at(loop).color.r = 32.0 / 256.0;
+                        actual_circles.markers.at(loop).type = visualization_msgs::msg::Marker::CYLINDER;
+                        
+                        // can put cyl_radius, cyl_height
+                        actual_circles.markers.at(loop).scale.x = sqrt(circle.at(2));
+                        actual_circles.markers.at(loop).scale.y = sqrt(circle.at(2));
+                        actual_circles.markers.at(loop).scale.z = 0.25;
+                        actual_circles.markers.at(loop).pose.position.x = circle.at(0) + means.at(0);
+                        actual_circles.markers.at(loop).pose.position.y = circle.at(1) + means.at(1);
+                        actual_circles.markers.at(loop).pose.position.z = actual_circles.markers.at(loop).scale.z / 2.0;
                         // RCLCPP_INFO(get_logger(), "mean: %.4f, std: %.4f", turtlelib::rad2deg(statistics.at(0)), statistics.at(1));
                         // RCLCPP_ERROR_STREAM(get_logger(), "circle: \n" << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
                     }                    
