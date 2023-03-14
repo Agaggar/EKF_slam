@@ -68,7 +68,8 @@ class Ekf_slam : public rclcpp::Node
       r_coeff(1.0),
       max_range(1.0),
       greenbot(),
-      data_associate(false)
+      data_associate(false),
+      use_lidar(true)
     {
       declare_parameter("wheel_radius", rclcpp::ParameterValue(wheel_radius));
       declare_parameter("track_width", rclcpp::ParameterValue(track_width));
@@ -86,8 +87,12 @@ class Ekf_slam : public rclcpp::Node
       declare_parameter("max_range", rclcpp::ParameterValue(r_coeff));
       get_parameter("max_range", r_coeff);
 
+      declare_parameter("min_num_associate", rclcpp::ParameterValue((int) min_num_associate));
+      get_parameter("min_num_associate", min_num_associate);
       declare_parameter("data_associate", rclcpp::ParameterValue(data_associate));
       get_parameter("data_associate", data_associate);
+      declare_parameter("use_lidar", rclcpp::ParameterValue(use_lidar));
+      get_parameter("use_lidar", use_lidar);
       greenbot.setWheelRadius(wheel_radius);
       greenbot.setWheelTrack(track_width);
 
@@ -97,6 +102,9 @@ class Ekf_slam : public rclcpp::Node
         std::placeholders::_1));
       fake_sensor_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
         "~/fake_sensor", 100, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
+      );
+      cluster_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
+        "~/circle_clusters", 100, std::bind(&Ekf_slam::fake_sensor_callback, this, std::placeholders::_1)
       );
       tf2_rostf_broadcaster = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
       js_pub = create_publisher<sensor_msgs::msg::JointState>("green/joint_states", 100);
@@ -118,11 +126,11 @@ class Ekf_slam : public rclcpp::Node
     mat Q, Qbar, sys_cov_bar, sys_cov, sys_cov_minusone, Hj, Kj, R, Rj, cov_k;
     double wheel_radius, track_width, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij, max_range;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
-    bool data_associate;
+    bool data_associate, use_lidar;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr map_obs_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
-    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub;
+    rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub, cluster_sub;
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf2_rostf_broadcaster;
     rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr js_pub;
     rclcpp::TimerBase::SharedPtr timer;
@@ -230,7 +238,7 @@ class Ekf_slam : public rclcpp::Node
       T_or = T_or.inv();
       T_mo = T_mr*T_or;
       // multiplication is wrong? angle is right
-      RCLCPP_ERROR_STREAM(get_logger(), "T_mr \n" << T_mr << "\nT_or\n" << T_or.inv() << "\nT_mo\n" << T_mo);
+      // RCLCPP_ERROR_STREAM(get_logger(), "T_mr \n" << T_mr << "\nT_or\n" << T_or.inv() << "\nT_mo\n" << T_mo);
       // RCLCPP_INFO(get_logger(), "diff in x: %.6f; diff in y: %.6f; diff in theta: %.6f", 
       //             T_mo.translation().x - t_odom_green.transform.translation.x,
       //             T_mo.translation().y - t_odom_green.transform.translation.y,
@@ -305,7 +313,7 @@ class Ekf_slam : public rclcpp::Node
           }
           zjt = {rj, phij};
           measurement_model(landmark_id);
-          if (data_associate) {
+          if (use_lidar) {
             dataAssociate();
           }
           zeta_update = zeta_predict + Kj*(zjt - zhat_jt);
@@ -380,7 +388,12 @@ class Ekf_slam : public rclcpp::Node
         landmark_maha = bigN;
         dstar = max_range;
         for (size_t landmark_k = 0; landmark_k <= bigN; landmark_k++) {
-          measurement_model(landmark_k);
+          if (landmark_k == bigN) {
+            measurement_model(landmark_k-1);
+          }
+          else {
+            measurement_model(landmark_k);
+          }
           cov_k = Hj * sys_cov_bar * (Hj.t()) + Rj;
           // RCLCPP_ERROR_STREAM(get_logger(), "cov_k: \n" << cov_k);
           dk = mahalanobis(cov_k, landmark_temp, zhat_jt);
@@ -390,21 +403,22 @@ class Ekf_slam : public rclcpp::Node
           }
           // RCLCPP_INFO(get_logger(), "%ld, %ld maha: %.4f", measurement, landmark_k, dk);
         }
-        if (landmark_maha == measurement) {
+        if ((landmark_maha == measurement) && (dstar > 1e-4) && (dstar < 0.3)) {
           // associate me!
           num_associated_landmark(measurement) += 1;
-          // RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.4f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
+          RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.4f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
         }
         else if (landmark_maha == bigN) {
           // new landmark!
-          bigN++;
-        }
-        if (num_associated_landmark(measurement) > min_num_associate) {
+          RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
           // set bigNth obstacle x and y based on the temp
           zeta_predict(3 + 2*bigN) = getLandmarkX(bigN-1);
           zeta_predict(4 + 2*bigN) = getLandmarkY(bigN-1);
-          dxj =  getLandmarkX(bigN-1) - zeta_predict(1);
-          dyj =  getLandmarkY(bigN-1) - zeta_predict(2);
+          bigN++;
+        }
+        if (num_associated_landmark(measurement) > min_num_associate) {
+          dxj =  getLandmarkX(measurement-1) - zeta_predict(1);
+          dyj =  getLandmarkY(measurement-1) - zeta_predict(2);
           dj = dxj*dxj + dyj*dyj;
           // update zhat
           zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta_predict(0))};
