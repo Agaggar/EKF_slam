@@ -100,7 +100,8 @@ class CircleFit : public rclcpp::Node {
                     // RCLCPP_ERROR_STREAM(get_logger(), "bigA: \n" << bigA);
                     circle = circleEq(bigA);
                     rmse = RMSE(circle, x_coor, y_coor);
-                    // RCLCPP_INFO(get_logger(), "center: (%.4f, %.4f) R: %.4f", circle.at(0), circle.at(1), circle.at(2));
+                    // #TODO: radius filtering and/or statistic filtering to pick a circle
+                    RCLCPP_INFO(get_logger(), "center: (%.4f, %.4f) R: %.4f", circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                     // RCLCPP_INFO(get_logger(), "rmse: %.6f", rmse);
                     statistics = computeStats(data_points.col(0), data_points.col(1));
                     // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << arma::join_rows(x_coor, y_coor));
