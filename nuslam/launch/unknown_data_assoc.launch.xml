@@ -1,11 +1,11 @@
 <launch>
     <include file="$(find-pkg-share nuslam)/launch/slam.launch.xml" >
         <arg name='data_associate' value='true' />
-        <arg name='min_num_associate' value='5' />
         <arg name='use_rviz' value='false' />
+        <arg name='use_lidar' value='true' />
     </include >
     <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
+        args="--ros-args -p cluster_count:='6' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
         <remap from="~/sim_lidar" to="nusim/sim_lidar" />
     </node>
     <node pkg="nuslam" exec="circle_fit" >
