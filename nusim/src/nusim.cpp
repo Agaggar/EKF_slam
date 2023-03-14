@@ -228,7 +228,6 @@ public:
     gauss_dist_obstacle_noise = std::normal_distribution<>{0.0, (basic_sensor_variance)};
     gauss_dist_lidar_noise = std::normal_distribution<>{0.0, (lidar_noise)};
     unif_dist = std::uniform_real_distribution<>{-slip_fraction, slip_fraction};
-    collided = false;
 
     tf2_rostf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
@@ -262,7 +261,7 @@ private:
   double rate, x0, y0, z0, theta0, cyl_radius, cyl_height, init_x, init_y, init_z;
   std::vector<double> obs_x, obs_y;
   double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range, collision_radius, encoder_ticks_per_rad, motor_cmd_per_rad_sec;
-  bool draw_only, collided;
+  bool draw_only;
   double angle_min, angle_max, angle_increment, time_increment, scan_time, range_min, range_max, lidar_noise;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
@@ -296,9 +295,10 @@ private:
   std::vector<std::vector<double>> poss_collision;
   std::vector<float> range_lidar;
   int count = 0;
-  double phi_cyl = 0.0, dist_cyl = 0.0;
+  double dist_cyl = 0.0, dist_move = 0.0;
   turtlelib::Transform2D Trw; // transformation from world to robot
   turtlelib::Vector2D obst_r; // obstacle x and y in robot frame
+  turtlelib::Vector2D obs_collide, robo_collide;
 
   /// \brief Timer callback
   void timer_callback()
@@ -369,7 +369,6 @@ private:
 
   /// \brief timer callback at 5 hz for a fake sensor
   void fake_sensor_timer() {
-    collided = false;
     cylinders_as_measured();
     simulate_lidar();
     fake_sensor_pub->publish(measured_cyl);
@@ -399,25 +398,10 @@ private:
     std::vector<double> phi_current = redbot.getWheelPos();
     redbot.fkinematics(
       std::vector<double>{left_new_pos, right_new_pos});
-    for (size_t loop = 0; loop < measured_cyl.markers.size(); loop++) {
-      if (measured_cyl.markers.at(loop).action != 2 && 
-          (distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) <= (collision_radius + cyl_radius))) {
-        RCLCPP_INFO(get_logger(), "collided!");
-        // turtlelib::Vector2D vec{(y0 - measured_cyl.markers.at(loop).pose.position.y), (x0 - measured_cyl.markers.at(loop).pose.position.x)};
-        theta_collision = std::atan2((y0 + measured_cyl.markers.at(loop).pose.position.y), (x0 + measured_cyl.markers.at(loop).pose.position.x));
-        x0 = x0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * cos(theta_collision);
-        y0 = y0 - (collision_radius + cyl_radius - distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y)) * sin(theta_collision);
-        measured_cyl.markers.at(loop).pose.position.x += distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) * cos(theta_collision);
-        measured_cyl.markers.at(loop).pose.position.y += distance(0.0, 0.0, measured_cyl.markers.at(loop).pose.position.x, measured_cyl.markers.at(loop).pose.position.y) * sin(theta_collision);
-        redbot.setCurrentConfig(std::vector<double>{x0, y0, theta0}); // robot doesn't move, but wheels still updated
-        // collided = true;
-      }
-    }
-    // if (!collided) {
+    checkCollision();
     x0 = redbot.getCurrentConfig().at(0);
     y0 = redbot.getCurrentConfig().at(1);
     theta0 = redbot.getCurrentConfig().at(2);
-    // }
     std::vector<double> phiprime_noise{
       wheel_velocities.at(0) * (1 + unif_dist(get_random())) * (1.0/rate),
       wheel_velocities.at(1) * (1 + unif_dist(get_random())) * (1.0/rate)
@@ -425,6 +409,22 @@ private:
     redbot.setWheelPos(std::vector<double>{phiprime_noise.at(0) + redbot.getWheelPos().at(0), phiprime_noise.at(1) + redbot.getWheelPos().at(1)});
     sd.left_encoder += (left_new_pos * encoder_ticks_per_rad);
     sd.right_encoder += (right_new_pos * encoder_ticks_per_rad);
+  }
+
+  /// \brief check if redbot collided with true obstacle
+  void checkCollision() {
+    for (size_t loop = 0; loop < (all_cyl.markers.size() - 2); loop++) {
+      dist_cyl = distance(redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1), all_cyl.markers.at(loop).pose.position.x, all_cyl.markers.at(loop).pose.position.y);
+      if (dist_cyl <= (collision_radius + cyl_radius)) {
+        // RCLCPP_INFO(get_logger(), "collided!");
+        robo_collide = {redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1)};
+        obs_collide = {robo_collide.x - all_cyl.markers.at(loop).pose.position.x, robo_collide.y - all_cyl.markers.at(loop).pose.position.y}; // magnitude is dist from robot to obstacle
+        dist_move = collision_radius + cyl_radius - turtlelib::magnitude(obs_collide);
+        robo_collide += (dist_move * (obs_collide.normalize())); // distance to move back
+        redbot.setCurrentConfig(std::vector<double>{robo_collide.x, robo_collide.y, theta0}); // robot doesn't move, but wheels still updated
+      }
+    }
+    
   }
 
   /// \brief helper function to generate measured cylinders
