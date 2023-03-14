@@ -194,8 +194,8 @@ class Ekf_slam : public rclcpp::Node
       }
 
       t_odom_green.header.stamp = get_clock()->now();
-      t_odom_green.transform.translation.x = 1.0;
-      t_odom_green.transform.translation.y = 1.0;
+      t_odom_green.transform.translation.x = greenbot.getCurrentConfig().at(0);
+      t_odom_green.transform.translation.y = greenbot.getCurrentConfig().at(1);
       prev_theta = greenbot.getCurrentConfig().at(2);
       q.setRPY(0, 0, greenbot.getCurrentConfig().at(2));
       t_odom_green.transform.rotation.x = q.x();
@@ -227,10 +227,14 @@ class Ekf_slam : public rclcpp::Node
       
       T_mr = {turtlelib::Vector2D{zeta_predict(1), zeta_predict(2)}, zeta_predict(0)}; // from slam
       T_or = {turtlelib::Vector2D{t_odom_green.transform.translation.x, t_odom_green.transform.translation.y}, prev_theta}; // from odom
-      T_mo = T_mr*(T_or.inv());
-      if (timestep%40 == 0) {
-        // RCLCPP_INFO(get_logger(), "gre robot state: %.3f, %.3f, %.3f", qt_minusone(0), qt_minusone(1), qt_minusone(2));
-      }
+      T_or = T_or.inv();
+      T_mo = T_mr*T_or;
+      // multiplication is wrong? angle is right
+      RCLCPP_ERROR_STREAM(get_logger(), "T_mr \n" << T_mr << "\nT_or\n" << T_or.inv() << "\nT_mo\n" << T_mo);
+      // RCLCPP_INFO(get_logger(), "diff in x: %.6f; diff in y: %.6f; diff in theta: %.6f", 
+      //             T_mo.translation().x - t_odom_green.transform.translation.x,
+      //             T_mo.translation().y - t_odom_green.transform.translation.y,
+      //             T_mo.rotation() - prev_theta);
       // RCLCPP_INFO(get_logger(), "green rot: no normal: %.2f; normal: %.2f", T_mo.rotation(), turtlelib::normalize_angle(T_mo.rotation()));
       t_mo.header.stamp = get_clock()->now();
       t_mo.transform.translation.x = T_mo.translation().x;
@@ -265,7 +269,7 @@ class Ekf_slam : public rclcpp::Node
       if ((js.position.size() > 1)) {
         wheel_rad = {js.position.at(0), js.position.at(1)};
         greenbot.fkinematics(std::vector<double>{wheel_rad.at(0) - greenbot.getWheelPos().at(0), wheel_rad.at(1) - greenbot.getWheelPos().at(1)});
-        }
+      }
       qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)}; // current odom        
     }
 
