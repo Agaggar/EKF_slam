@@ -38,12 +38,15 @@ class CircleFit : public rclcpp::Node {
             "~/clusters", 100, std::bind(
                 &CircleFit::cluster_callback, this, std::placeholders::_1)
             );
+        circle_cluster_pub = create_publisher<visualization_msgs::msg::MarkerArray>(
+            "landmarks/circle_clusters", 100);
         timer = create_wall_timer(std::chrono::milliseconds(int(1.0 / rate * 1000)),
                                   std::bind(&CircleFit::timer_callback, this));
     }
     private:
         double rate;
         rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_sub;
+        rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr circle_cluster_pub;
         rclcpp::TimerBase::SharedPtr timer;
         mat clusters, data_points, bigZ, bigM, bigH, bigH_inv;
         arma::vec x_coor, y_coor, zi, bigA, angles;
@@ -51,17 +54,22 @@ class CircleFit : public rclcpp::Node {
         std::vector<double> means, circle, statistics;
         double zbar, sum, rmse, mean_thresh = 0.1, stddev_thresh = 0.1;
         turtlelib::Vector2D P1, P2;
+        visualization_msgs::msg::MarkerArray actual_circles;
 
         /// \brief Timer callback 
         void timer_callback() {
-            ; // do stuff
+            if (actual_circles.markers.size() > 0) {
+                circle_cluster_pub->publish(actual_circles);
+            }
         }
 
         /// \brief subscription callback for clusters
         /// \param clus - marker array from topic
         void cluster_callback(visualization_msgs::msg::MarkerArray clus) {
+            actual_circles = clus;
             for (size_t loop = 0; loop < clus.markers.size(); loop++) {
                 if (clus.markers.at(loop).action == 0) {
+                    actual_circles.markers.at(loop).action = 2;
                     x_coor.zeros(clus.markers.at(loop).points.size());
                     y_coor.zeros(clus.markers.at(loop).points.size());
                     for (size_t index = 0; index < clus.markers.at(loop).points.size(); index++) {
@@ -99,7 +107,10 @@ class CircleFit : public rclcpp::Node {
                     // shiftPoints(data_points, means).save("data.txt", raw_ascii);
                     if ((abs(statistics.at(0) - turtlelib::PI) <= mean_thresh) && (statistics.at(1) < stddev_thresh)) {
                         // circle is found;
-                        ;
+                        actual_circles.markers.at(loop).action = 0;
+                        actual_circles.markers.at(loop).color.r = 75.0 / 256.0;
+                        actual_circles.markers.at(loop).color.g = 83.0 / 256.0;
+                        actual_circles.markers.at(loop).color.r = 32.0 / 256.0;
                         // RCLCPP_INFO(get_logger(), "mean: %.4f, std: %.4f", turtlelib::rad2deg(statistics.at(0)), statistics.at(1));
                         // RCLCPP_ERROR_STREAM(get_logger(), "circle: \n" << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
                     }                    
