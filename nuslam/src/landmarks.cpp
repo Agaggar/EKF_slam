@@ -66,7 +66,7 @@ class Landmarks : public rclcpp::Node
         // mat clusters = mat(359, 359, -1*arma::fill::ones);
         int clust_check_count = 0;
         bool is_cluster = false;
-        double tolerance = 0.1;
+        double tolerance = 0.15;
         visualization_msgs::msg::MarkerArray cluster_cyl;
 
         /// \brief Timer callback
@@ -79,7 +79,7 @@ class Landmarks : public rclcpp::Node
             }
             if (clusters.size() > 0) {
                 for (size_t index = 0; index < clusters.size(); index++) {
-                    update_cylinder(index);
+                    update_cylinder();
                 }
                 cluster_pub->publish(cluster_cyl);
             }
@@ -97,38 +97,40 @@ class Landmarks : public rclcpp::Node
         void cluster() {
             int cluster_row = 0;
             clusters.clear();
-            for (size_t index = 0; index < (ranges.n_elem - cluster_count); index++) {
-                clust_check_count = 0;
-                is_cluster = false;
-                // are cluster_count (3) consecutive values nonzero?
-                // #TODO: check if at least cluster_count are together. bc if we're close to the obstacle, don't want to make 10 obstacles if there are 10*clusters there
-                for (size_t point = 0; point < cluster_count; point++) {
-                    // RCLCPP_INFO(get_logger(), "index: %ld", index);
-                    if (ranges(index+point) > 0.0) {
-                        clust_check_count++;
-                    }
+            for (size_t point = 0; point < (ranges.n_elem - 1); point++) {
+                // are cluster_count (4) consecutive values nonzero?
+                if (ranges(point) > 0.0) {
+                    clust_check_count++;
                 }
-                // are cluster_count (3) consecutive values close to a tolerance value?
-                if (clust_check_count == cluster_count) {
+                else if (clust_check_count >= cluster_count) {
+                    // there were at least cluster_count (4) consecutive values that were positive
+                    size_t all_points = clust_check_count;
                     clust_check_count = 0;
-                    // RCLCPP_INFO(get_logger(), "points: %.2f, %.2f, %.2f", ranges(index+1), ranges(index), std::abs(ranges(index+1) - ranges(index)));
-                    for (size_t point = 0; point < (cluster_count - 1); point++) {
-                        if (std::abs(ranges(index+point+1) - ranges(index+point)) < tolerance) {
+                    // RCLCPP_INFO(get_logger(), "ind pt: %ld", +point);
+                    for (size_t next_point = 1; next_point < (all_points - 1); next_point++) {
+                        if ((point+next_point + 1) == ranges.n_elem) {
+                            next_point = all_points;
+                        }
+                        else if (std::abs(ranges(point+next_point) - ranges(point)) < tolerance) {
                             clust_check_count++;
                         }
                     }
-                    if (clust_check_count == (cluster_count - 1)) {
-                        // RCLCPP_INFO(get_logger(), "cluster found: %ld", index);
-                        is_cluster = true;
+                    // here were at least cluster_count (4) consecutive values that had the same distance as (+point)
+                    if (clust_check_count >= (cluster_count - 1)) {
+                        // RCLCPP_INFO(get_logger(), "cluster found: %ld", point);
+                        clusters.push_back(std::vector<float>{(float) point}); // the first element of a row is the angle value of where it was measured
+                        for (int addMe = 0; addMe < clust_check_count; addMe++) {
+                            if ((point + addMe + 1) < ranges.n_elem) {
+                                clusters.at(cluster_row).push_back(ranges(point + addMe));
+                            }
+                        }
+                        point += clust_check_count; // skip the next clust_check points since we already know they're in this cluster
+                        cluster_row++;
                     }
+                    clust_check_count = 0;
                 }
-                if (is_cluster) {
-                    clusters.push_back(std::vector<float>{(float) index}); // the first element of a row is the angle value of where it was measured
-                    for (size_t point = 0; point < cluster_count; point++) {
-                        clusters.at(cluster_row).push_back(ranges(index + point));
-                    }
-                    index += (cluster_count - 1); // skip the next 2 (+1) points
-                    cluster_row++;
+                else {
+                    clust_check_count = 0;
                 }
             }
             is_cluster = false;
@@ -155,15 +157,13 @@ class Landmarks : public rclcpp::Node
                         clust_check_count++;
                     }
                 }
-                if (clust_check_count == (cluster_count - 1)) {
+                if (clust_check_count >= (cluster_count - 1)) {
                     if (first < cluster_count) {
                         first = ranges.n_elem - 1 - first;
                     }
-                    else {
-                        RCLCPP_INFO(get_logger(), "cluster found at the end!");
-                        clusters.push_back(std::vector<float>{(float) first}); // the first element of a row is the angle value of where it was measured
-                    }
-                    for (size_t point = 0; point < cluster_count; point++) {
+                    // RCLCPP_INFO(get_logger(), "cluster found at the end!");
+                    clusters.push_back(std::vector<float>{(float) first}); // the first element of a row is the angle value of where it was measured
+                    for (int point = 0; point < cluster_count; point++) {
                         if ((first + point + 1) == ranges.n_elem) {
                             first = 0;
                         }
@@ -194,15 +194,21 @@ class Landmarks : public rclcpp::Node
         }
 
         /// \brief update cylinder
-        /// \param mark - marker id
-        void update_cylinder(int mark) {
-            cluster_cyl.markers.at(mark).action = visualization_msgs::msg::Marker::ADD;
-            cluster_cyl.markers.at(mark).points = {};
-            for (size_t index = 1; index < clusters.at(mark).size(); index++) {
-                cluster_cyl.markers.at(mark).points.push_back(geometry_msgs::build<geometry_msgs::msg::Point>().
-                                                              x(clusters.at(mark).at(index) * cos(clusters.at(mark).at(0) * angle_increment)).
-                                                              y(clusters.at(mark).at(index) * sin(clusters.at(mark).at(0) * angle_increment)).
-                                                              z(cluster_cyl.markers.at(mark).scale.z / 2.0));
+        void update_cylinder() {
+            for (size_t mark = 0; mark < cluster_cyl.markers.size(); mark++) {
+                if (mark < clusters.size()) {
+                    cluster_cyl.markers.at(mark).action = visualization_msgs::msg::Marker::ADD;
+                    cluster_cyl.markers.at(mark).points = {};
+                    for (size_t index = 1; index < clusters.at(mark).size(); index++) {
+                        cluster_cyl.markers.at(mark).points.push_back(geometry_msgs::build<geometry_msgs::msg::Point>().
+                                                                    x(clusters.at(mark).at(index) * cos(clusters.at(mark).at(0) * angle_increment)).
+                                                                    y(clusters.at(mark).at(index) * sin(clusters.at(mark).at(0) * angle_increment)).
+                                                                    z(cluster_cyl.markers.at(mark).scale.z / 2.0));
+                    }
+                }
+                else {
+                    cluster_cyl.markers.at(mark).action = visualization_msgs::msg::Marker::DELETE;
+                }
             }
         }
 };
