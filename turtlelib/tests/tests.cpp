@@ -282,8 +282,6 @@ TEST_CASE("Test vel to Twist", "DiffDrive") {
 }
 
 TEST_CASE("Test Translation + Rotation Twist", "DiffDrive") {
-    double track = 0.16/2.0;
-    double rad = 0.033;
     DiffDrive dd = DiffDrive();
     // dd.setWheelTrack(track);
     // dd.setWheelRadius(rad);
