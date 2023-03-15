@@ -105,10 +105,11 @@ class CircleFit : public rclcpp::Node {
                     statistics = computeStats(data_points.col(0), data_points.col(1));
                     // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << arma::join_rows(x_coor, y_coor));
                     // shiftPoints(data_points, means).save("data.txt", raw_ascii);
-                    if (circle.at(2) > 1e-4 && circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .15) {
+                    RCLCPP_INFO(get_logger(), "%ld: center: (%.4f, %.4f) R: %.4f", loop, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
+                    if (circle.at(2) > 1e-4 && circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
                     // if ((abs(statistics.at(0) - turtlelib::PI) <= mean_thresh) && (statistics.at(1) < stddev_thresh)) {
                         // circle is found;
-                        RCLCPP_INFO(get_logger(), "center: (%.4f, %.4f) R: %.4f", circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
+                        RCLCPP_INFO(get_logger(), "mean: %.4f, std: %.4f", turtlelib::rad2deg(statistics.at(0)), statistics.at(1));
                         actual_circles.markers.at(loop).header.stamp = get_clock()->now();
                         actual_circles.markers.at(loop).action = 0;
                         actual_circles.markers.at(loop).color.r = 75.0 / 256.0;
