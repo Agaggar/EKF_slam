@@ -184,7 +184,7 @@ class Landmarks : public rclcpp::Node
                         if ((first + point + 1) == (int) ranges.n_elem) {
                             first = 0;
                         }
-                        clusters.at(cluster_row).push_back(ranges(first + point));
+                        // clusters.at(cluster_row).push_back(ranges(first + point));
                     }
                 }
                 else {
@@ -221,10 +221,12 @@ class Landmarks : public rclcpp::Node
                     cluster_cyl.markers.at(mark).action = visualization_msgs::msg::Marker::ADD;
                     cluster_cyl.markers.at(mark).points = {};
                     for (size_t index = 1; index < clusters.at(mark).size(); index++) {
-                        cluster_cyl.markers.at(mark).points.push_back(geometry_msgs::build<geometry_msgs::msg::Point>().
+                        if (sqrt(pow(clusters.at(mark).at(index) * cos(clusters.at(mark).at(0) * angle_increment), 2) + clusters.at(mark).at(index) * sin(clusters.at(mark).at(0) * angle_increment)) > 0.15) {
+                            cluster_cyl.markers.at(mark).points.push_back(geometry_msgs::build<geometry_msgs::msg::Point>().
                                                                     x(clusters.at(mark).at(index) * cos(clusters.at(mark).at(0) * angle_increment)).
                                                                     y(clusters.at(mark).at(index) * sin(clusters.at(mark).at(0) * angle_increment)).
                                                                     z(cluster_cyl.markers.at(mark).scale.z / 2.0));
+                        }
                     }
                 }
                 else {

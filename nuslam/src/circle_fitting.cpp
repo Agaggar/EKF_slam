@@ -140,9 +140,9 @@ class CircleFit : public rclcpp::Node {
                     // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << arma::join_rows(x_coor, y_coor));
                     // shiftPoints(data_points, means).save("data.txt", raw_ascii);
                     // RCLCPP_INFO(get_logger(), "%ld: center: (%.4f, %.4f) R: %.4f", loop, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
-                    // RCLCPP_INFO(get_logger(), "cluster %d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
+                    RCLCPP_INFO(get_logger(), "cluster %d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                     // if (distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
-                    if (circle.at(2) > 1e-4 && circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1
+                    if (circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1
                         && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) < max_range) {
                     // if ((abs(statistics.at(0) - turtlelib::PI) <= mean_thresh) && (statistics.at(1) < stddev_thresh)) {
                         ////// CIRCLE FOUND
