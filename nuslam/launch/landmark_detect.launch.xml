@@ -7,10 +7,11 @@
         <arg name='use_rviz' value='false' />
     </include>
     <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='5' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
+        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
         <remap from="~/sim_lidar" to="nusim/sim_lidar" />
     </node>
-    <node pkg="nuslam" exec="circle_fit" >
+    <node pkg="nuslam" exec="circle_fit" 
+        args="--ros-args --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
         <remap from="~/clusters" to="landmarks/clusters" />
     </node>
     <node pkg="rviz2" exec="rviz2" name="rviz2" 

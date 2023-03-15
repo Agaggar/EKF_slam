@@ -4,8 +4,14 @@
         <arg name='use_lidar' value='true' />
     </include >
     <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='6' --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" >
+        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
+        if="$(eval '\'$(var use_lidar)\' == \'true\'')">
         <remap from="~/sim_lidar" to="nusim/sim_lidar" />
+    </node>
+    <node pkg="nuslam" exec="landmarks" 
+        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
+        if="$(eval '\'$(var use_lidar)\' == \'false\'')">
+        <remap from="~/sim_lidar" to="nusim/fake_sensor" />
     </node>
     <node pkg="nuslam" exec="circle_fit" >
         <remap from="~/clusters" to="landmarks/clusters" />
