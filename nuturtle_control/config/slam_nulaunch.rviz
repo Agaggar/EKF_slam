@@ -50,7 +50,7 @@ Visualization Manager:
       Enabled: true
       Name: Measured Relative Obstacles
       Namespaces:
-        "": true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -62,7 +62,7 @@ Visualization Manager:
       Enabled: true
       Name: Map Obstacles
       Namespaces:
-        "": true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -275,7 +275,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 100
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -296,7 +296,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /odom
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -357,7 +357,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /slam_odom/bluepath
+        Value: /green/greenpath
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
