@@ -15,5 +15,5 @@
     range_max: 3.5 # lidar, max range
     lidar_noise: 0.0001 # lidar, variance of reading
     slam: 
-      q_coeff: 0.01 # scale Qbar (don't trust odometry)
-      r_coeff: 0.01 # scale R (don't trust sensor)
+      q_coeff: 1.0 # scale Qbar (don't trust odometry)
+      r_coeff: 0.001 # scale R (don't trust sensor)
