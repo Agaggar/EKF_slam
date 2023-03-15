@@ -278,18 +278,15 @@ class Ekf_slam : public rclcpp::Node
           if (use_lidar == true) {
             dataAssociate(landmark_id, obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y);
           }
+          RCLCPP_INFO(get_logger(), "predicting now");
           // x, y, index
           rj = distance(obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y);
           phij = (atan2(obs.markers.at(landmark_id).pose.position.y, obs.markers.at(landmark_id).pose.position.x));
-          if (num_associated_landmark(landmark_id) > 3) {
-            if (m_seen.at(landmark_id) != obs.markers.at(landmark_id).id) {
+          if (m_seen.at(landmark_id) != obs.markers.at(landmark_id).id) {
             // RCLCPP_INFO(get_logger(), "now you see landmark: %ld", landmark_id);
             m_seen(landmark_id) = obs.markers.at(landmark_id).id;
             zeta_predict(3 + 2*landmark_id) = zeta_predict(1) + rj*cos(phij + zeta_predict(0)); // update measured landmark x
             zeta_predict(4 + 2*landmark_id) = zeta_predict(2) + rj*sin(phij + zeta_predict(0)); // update measured landmark y
-            // mt(2*landmark_id) = zeta_predict(3 + 2*landmark_id);
-            // mt(2*landmark_id + 1) = zeta_predict(4 + 2*landmark_id);
-            // bigN += 1;
           }
           // actual measurement (comes from red robot)
           zjt = {rj, phij};
@@ -304,7 +301,6 @@ class Ekf_slam : public rclcpp::Node
           sys_cov_minusone = (bigI - Kj*Hj) * sys_cov_bar;
           sys_cov_bar = sys_cov_minusone;
           // RCLCPP_ERROR_STREAM(get_logger(), "updated cov: \n" << sys_cov_bar);
-          }
         }
       }
 
@@ -399,12 +395,14 @@ class Ekf_slam : public rclcpp::Node
         // RCLCPP_ERROR_STREAM(get_logger(), "cov_k: \n" << cov_k);
         dk = mahalanobis(cov_k, landmark_temp, zhat_jt);
         if (dk < dstar) {
+        // if (dk < dstar && dk > 1e-4) {
           dstar = dk;
           landmark_maha = landmark_k;
         }
-        RCLCPP_INFO(get_logger(), "%ld, %ld maha: %.4f", measurement, landmark_k, dk);
+        RCLCPP_INFO(get_logger(), "%ld, %ld maha: %.6f", measurement, landmark_k, dk);
       }
-      if (landmark_maha == bigN) {
+      if ((landmark_maha == bigN)) {
+      // if ((landmark_maha == bigN) && (dstar < 1) && (dstar > 1e-4)) {
         // new landmark!
         RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
         // set bigNth obstacle x and y
@@ -412,12 +410,13 @@ class Ekf_slam : public rclcpp::Node
         // zeta_predict(4 + 2*bigN) = zeta_predict(2) + zhat_jt(0)*sin(zhat_jt(1) + zeta_predict(0)); // update measured landmark y
         bigN++;
       }
-      else if ((landmark_maha == measurement) && (dstar < 1)) {
+      // else if ((landmark_maha == measurement) && (dstar < 1)) {
+      else if ((dstar < 1) && (dstar > 1e-4)) {
         // associate me!
         zeta_predict(3 + 2*bigN) = 0;
         zeta_predict(4 + 2*bigN) = 0;
         num_associated_landmark(measurement) += 1;
-        RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.4f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
+        RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.6f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
       } 
     }
 
@@ -429,7 +428,7 @@ class Ekf_slam : public rclcpp::Node
     /// @return mahalanobis distance
     double mahalanobis(mat covK, vec xi, vec xk, mat temp = arma::eye(2, 2)) {
       temp = ((xi - xk).t()) * (covK.i()) * ((xi - xk));
-      RCLCPP_ERROR_STREAM(get_logger(), "FIND MAHA: \n" << temp);
+      // RCLCPP_ERROR_STREAM(get_logger(), "FIND MAHA: \n" << temp);
       return temp(0, 0);
     }
 
