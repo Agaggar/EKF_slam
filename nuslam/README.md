@@ -13,10 +13,7 @@ This package is designed to do ekf slam to correct the position discrepancy betw
 * all the same parameter descriptions from nuturtle-control package can be used here
 
 ## Final RViZ screenshot:
-![rviz_slam](https://user-images.githubusercontent.com/10903052/222858761-2a350b7a-70c5-47a5-be5b-78a4aaab9590.png)
+![rviz_slam](https://user-images.githubusercontent.com/10903052/225189389-1a9ffe9d-fe31-4e36-bcae-2ee362ce24d6.png)
 
-## Note:
-This package isn't fully functional. 
-* Specifically, collisions between the red robot and obstacles isn't fully implemented (requires a delay to recognize obstacles and react due to frequency discrepancy between fake_sensor and cmd_vel)
-* SLAM still follows odometry rather than updating properly
-* Landmark detection in SLAM does unknown things when the robot is rotating, with landmarks frequently deviating in the y direction
+## Final RViZ Video (for reference):
+![rviz video](https://user-images.githubusercontent.com/10903052/225190815-6669c641-a22d-4db9-ae6b-6331ea5b974b.webm)
