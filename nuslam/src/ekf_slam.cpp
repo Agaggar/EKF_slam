@@ -116,14 +116,14 @@ class Ekf_slam : public rclcpp::Node
 
   private:
     double rate;
-    size_t timestep, min_num_associate;
+    size_t timestep, min_num_associate, ell;
     vec qt, qt_minusone, dq, mt_minusone, mt, zeta_update, zeta_predict, zeta_prev, m_seen, zjt, zhat_jt, dz, landmark_temp, num_associated_landmark;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3, arma::fill::zeros);
-    mat Q, Qbar, sys_cov_bar, sys_cov, sys_cov_minusone, Hj, Kj, R, Rj, cov_k, bigI;
+    mat Q, Qbar, sys_cov_bar, sys_cov, sys_cov_minusone, Hj, Kj, R, Rj, cov_k, bigI, landmark_list;
     double wheel_radius, track_width, cyl_radius, cyl_height, q_coeff, r_coeff, rj, phij, max_range;
     turtlelib::DiffDrive greenbot = turtlelib::DiffDrive(0.0, 0.0, 0.0, 0.0, 0.0);
-    bool use_lidar;
+    bool use_lidar, already_seen;
     rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr map_obs_pub;
     rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr js_sub;
@@ -159,6 +159,7 @@ class Ekf_slam : public rclcpp::Node
         qt = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         qt_minusone = {greenbot.getCurrentConfig().at(2), greenbot.getCurrentConfig().at(0), greenbot.getCurrentConfig().at(1)};
         mt.zeros(2*poss_obs);
+        landmark_list.zeros(poss_obs, 2);
         sys_cov_minusone.zeros(3+2*poss_obs, 3+2*poss_obs);
         bigI.eye(3+2*poss_obs, 3+2*poss_obs);
         bigN = 0;
@@ -184,6 +185,7 @@ class Ekf_slam : public rclcpp::Node
         zeta_prev = zeta_update;
         dz.zeros(2);
         dq.zeros(3);
+        already_seen = true;
 
         t_mo.header.frame_id = "map";
         t_mo.child_frame_id = "green/odom";
@@ -274,23 +276,33 @@ class Ekf_slam : public rclcpp::Node
       /// CORRECT step 
       for (size_t landmark_id=0; landmark_id < obs.markers.size(); landmark_id++) {
         if (obs.markers.at(landmark_id).action != 2) {
+          // && distance(obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y) > 0.15
           // data association
+          // if (0 == 1) {
           if (use_lidar == true) {
-            dataAssociate(landmark_id, obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y);
+            ell = dataAssociate(landmark_id, obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y);
+            RCLCPP_INFO(get_logger(), "landmark %ld associated", ell);
+            // if (num_associated_landmark(landmark_maha) < 3) {
+            //   zeta_predict(3 + 2*bigN) = 0;
+            //   zeta_predict(4 + 2*bigN) = 0;
+            // }
           }
-          RCLCPP_INFO(get_logger(), "predicting now");
+          else {
+            ell = landmark_id;
+          }
+          // RCLCPP_INFO(get_logger(), "predicting now");
           // x, y, index
           rj = distance(obs.markers.at(landmark_id).pose.position.x, obs.markers.at(landmark_id).pose.position.y);
           phij = (atan2(obs.markers.at(landmark_id).pose.position.y, obs.markers.at(landmark_id).pose.position.x));
-          if (m_seen.at(landmark_id) != obs.markers.at(landmark_id).id) {
-            // RCLCPP_INFO(get_logger(), "now you see landmark: %ld", landmark_id);
-            m_seen(landmark_id) = obs.markers.at(landmark_id).id;
-            zeta_predict(3 + 2*landmark_id) = zeta_predict(1) + rj*cos(phij + zeta_predict(0)); // update measured landmark x
-            zeta_predict(4 + 2*landmark_id) = zeta_predict(2) + rj*sin(phij + zeta_predict(0)); // update measured landmark y
+          if (m_seen.at(ell) != obs.markers.at(landmark_id).id) {
+            // RCLCPP_INFO(get_logger(), "now you see landmark: %ld", ell);
+            m_seen(ell) = obs.markers.at(landmark_id).id;
+            zeta_predict(3 + 2*ell) = zeta_predict(1) + rj*cos(phij + zeta_predict(0)); // update measured landmark x
+            zeta_predict(4 + 2*ell) = zeta_predict(2) + rj*sin(phij + zeta_predict(0)); // update measured landmark y
           }
           // actual measurement (comes from red robot)
           zjt = {rj, phij};
-          measurement_model(landmark_id);
+          measurement_model(ell);
           dz = zjt - zhat_jt;
           // RCLCPP_ERROR_STREAM(get_logger(), "dz: \n" << dz);
           dz(1) = turtlelib::normalize_angle(dz(1));
@@ -309,7 +321,7 @@ class Ekf_slam : public rclcpp::Node
       T_mo = T_mr * T_or.inv();
       
       zeta_prev = zeta_predict;
-      // zeta_predict.save("zeta_" + std::to_string(timestep) + ".txt", arma_ascii);
+      zeta_predict.save("zeta_" + std::to_string(timestep) + ".txt", arma_ascii);
       update_all_cylinders();
     }
 
@@ -362,17 +374,21 @@ class Ekf_slam : public rclcpp::Node
     }
 
     /// \brief helper function to data association algorithm for a given measurement 
-    void dataAssociate(size_t measurement, double cyl_x, double cyl_y) {
+    /// \param measurement - measurement id
+    /// \param cyl_x - obstacle's x coordinate
+    /// \param cyl_y - obstacle's y coordinate
+    /// \return associated landmark id
+    size_t dataAssociate(size_t measurement, double cyl_x, double cyl_y) {
       if (bigN >= poss_obs) {
         RCLCPP_INFO(get_logger(), "BIG PROBLEM, too many Ns");
       }
-      RCLCPP_INFO(get_logger(), "%ld measured at: %.4f, %.4f",measurement, cyl_x, cyl_y);
       rj = distance(cyl_x, cyl_y);
       phij = (atan2(cyl_y, cyl_x));
       zjt = {rj, phij};
       // temp set to latest observed
       zeta_predict(3 + 2*bigN) = zeta_predict(1) + rj*cos(phij + zeta_predict(0));
       zeta_predict(4 + 2*bigN) = zeta_predict(2) + rj*sin(phij + zeta_predict(0));
+      // RCLCPP_INFO(get_logger(), "%ld measured at: %.4f, %.4f",measurement, getLandmarkX(bigN), getLandmarkY(bigN));
       landmark_temp = {getLandmarkX(bigN), getLandmarkY(bigN)};
       landmark_maha = bigN;
       dstar = max_range;
@@ -387,22 +403,44 @@ class Ekf_slam : public rclcpp::Node
         }
         // RCLCPP_INFO(get_logger(), "%ld, %ld maha: %.12f", measurement, landmark_k, dk);
       }
-      if ((landmark_maha == bigN)) {
-        // new landmark!
-        RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
-        // RCLCPP_INFO(get_logger(), "at coord: %.4f, %.4f", getLandmarkX(bigN), getLandmarkY(bigN));
-        // zeta_predict(3 + 2*bigN) = zeta_predict(1) + zhat_jt(0)*cos(zhat_jt(1) + zeta_predict(0)); // update measured landmark x
-        // zeta_predict(4 + 2*bigN) = zeta_predict(2) + zhat_jt(0)*sin(zhat_jt(1) + zeta_predict(0)); // update measured landmark y
-        bigN++;
-      }
-      else if ((landmark_maha == measurement) && (dstar < 1)) {
+      // if ((landmark_maha == bigN) && (dstar > 1e-9)) {
+      if ((dstar < 0.5)) {
+      // else if ((landmark_maha == measurement) && (dstar < 1)) {
       // else if ((dstar < 1) && (dstar > 1e-4)) {
         // associate me!
         zeta_predict(3 + 2*bigN) = 0;
         zeta_predict(4 + 2*bigN) = 0;
-        num_associated_landmark(measurement) += 1;
-        RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.12f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
-      } 
+        num_associated_landmark(landmark_maha) += 1;
+        RCLCPP_INFO(get_logger(), "return %ld, %.6f", landmark_maha, dstar);
+        return landmark_maha;
+        // RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.12f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
+      }
+      else {
+        // new landmark!
+        already_seen = false;
+        RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
+        for (size_t landmark_seen = 0; landmark_seen < bigN; landmark_seen++) {
+          if (distance(landmark_list(landmark_seen, 0), landmark_list(landmark_seen, 1), getLandmarkX(bigN), getLandmarkY(bigN)) < 0.5) {
+            RCLCPP_INFO(get_logger(), "already seen: %ld", bigN);
+            already_seen = true;
+            RCLCPP_INFO(get_logger(), "return landmark seen %ld, %.6f", landmark_maha, dstar);
+            return landmark_seen;
+          }
+        }
+        if (already_seen == false) {
+          RCLCPP_INFO(get_logger(), "new landmark! %ld, %.6f", bigN, dstar);
+          landmark_list(bigN, 0) = getLandmarkX(bigN);
+          landmark_list(bigN, 1) = getLandmarkY(bigN);
+          bigN++;
+          return bigN;
+        }
+        // RCLCPP_INFO(get_logger(), "at coord: %.4f, %.4f", getLandmarkX(bigN), getLandmarkY(bigN));
+        // zeta_predict(3 + 2*bigN) = zeta_predict(1) + zhat_jt(0)*cos(zhat_jt(1) + zeta_predict(0)); // update measured landmark x
+        // zeta_predict(4 + 2*bigN) = zeta_predict(2) + zhat_jt(0)*sin(zhat_jt(1) + zeta_predict(0)); // update measured landmark y
+        // bigN++;
+      }
+      RCLCPP_INFO(get_logger(), "code should not reach here? %ld, %.6f", landmark_maha, dstar);
+      return bigN;
     }
 
     /// @brief compute mahalanobis distance
@@ -510,15 +548,16 @@ class Ekf_slam : public rclcpp::Node
   /// \brief Update positions, timesteps, etc when publishing
   void update_all_cylinders()
   {
-    for (size_t loop = 0; loop < poss_obs; loop++) {
+    for (size_t loop = 0; loop < bigN; loop++) {
       all_cyl.markers.at(loop).header.stamp = get_clock()->now();
-      if (m_seen(loop) >= 0.0) {
+      if (turtlelib::almost_equal(getLandmarkX(loop), 0.0, 1e-6) && turtlelib::almost_equal(getLandmarkY(loop), 0.0, 1e-6)) {
+      // if (m_seen(loop) >= 0.0) {
+        all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
+      }
+      else {
         all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::ADD;
         all_cyl.markers.at(loop).pose.position.x = getLandmarkX(loop);
         all_cyl.markers.at(loop).pose.position.y = getLandmarkY(loop);
-      }
-      else {
-        all_cyl.markers.at(loop).action = visualization_msgs::msg::Marker::DELETE;
       }
     }
   }
