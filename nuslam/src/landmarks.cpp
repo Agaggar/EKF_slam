@@ -178,7 +178,7 @@ class Landmarks : public rclcpp::Node
         void create_cylinder(int mark)
         {
             visualization_msgs::msg::Marker marker;
-            marker.header.frame_id = "nusim/world";
+            marker.header.frame_id = "red/base_footprint";
             marker.header.stamp = get_clock()->now();
             marker.id = mark;
             marker.type = 6;
