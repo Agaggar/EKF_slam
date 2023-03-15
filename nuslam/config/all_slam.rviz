@@ -7,7 +7,7 @@ Panels:
         - /TF1/Frames1
         - /TF1/Tree1
       Splitter Ratio: 0.5
-    Tree Height: 443
+    Tree Height: 822
   - Class: rviz_common/Views
     Expanded:
       - /Current View1
@@ -47,19 +47,19 @@ Visualization Manager:
         Value: /nusim/obstacles
       Value: true
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: Measured Relative Obstacles
       Namespaces:
-        "": true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /nusim/fake_sensor
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
-      Enabled: true
+      Enabled: false
       Name: Clustered
       Namespaces:
         {}
@@ -69,12 +69,12 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /landmarks/circle_clusters
-      Value: true
+      Value: false
     - Class: rviz_default_plugins/MarkerArray
       Enabled: true
       Name: Map Obstacles
       Namespaces:
-        "": true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -287,7 +287,7 @@ Visualization Manager:
           Scale: 1
           Value: true
         Value: true
-      Enabled: true
+      Enabled: false
       Keep: 100
       Name: Odometry
       Position Tolerance: 0.10000000149011612
@@ -308,7 +308,7 @@ Visualization Manager:
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /odom
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -369,7 +369,7 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /slam_odom/bluepath
+        Value: /green/greenpath
       Value: true
     - Alpha: 1
       Class: rviz_default_plugins/RobotModel
@@ -460,10 +460,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.4799998998641968
+      Pitch: 0.6849997043609619
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 5.049998760223389
+      Yaw: 4.92999792098999
     Saved: ~
 Window Geometry:
   Displays:
@@ -471,7 +471,7 @@ Window Geometry:
   Height: 1043
   Hide Left Dock: false
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd0000000100000000000001cb000003b9fc0200000002fb000000100044006900730070006c006100790073010000003d0000023e000000c900fffffffb0000000a00560069006500770073010000028100000175000000a400ffffff00000565000003b900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000100000000000001cb000003b9fc0200000002fb000000100044006900730070006c006100790073010000003d000003b9000000c900fffffffb0000000a00560069006500770073000000028100000175000000a400ffffff00000565000003b900000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Views:
     collapsed: false
   Width: 1846
