@@ -34,6 +34,7 @@ class Landmarks : public rclcpp::Node
     : Node("landmarks"),
     rate(5.0),
     angle_increment(0.01745329238474369),
+    max_range(0.5),
     cluster_count(6),
     marker_frame("red/base_footprint")
     {
@@ -42,6 +43,8 @@ class Landmarks : public rclcpp::Node
         get_parameter("rate", rate);
         declare_parameter("angle_increment", rclcpp::ParameterValue(angle_increment));
         get_parameter("angle_increment", angle_increment);
+        declare_parameter("max_range", rclcpp::ParameterValue(max_range));
+        get_parameter("max_range", max_range);
         declare_parameter("cluster_count", rclcpp::ParameterValue(cluster_count));
         get_parameter("cluster_count", cluster_count);
         declare_parameter("marker_frame", rclcpp::ParameterValue(marker_frame));
@@ -51,6 +54,9 @@ class Landmarks : public rclcpp::Node
         "~/sim_lidar", 10, std::bind(
             &Landmarks::lidar_callback, this,
             std::placeholders::_1));
+        // only use this on the actual turtlebot
+        laser_sub = create_subscription<sensor_msgs::msg::LaserScan>(
+            "scan", rclcpp::SensorDataQoS(), std::bind(&Landmarks::lidar_callback, this, std::placeholders::_1));
         cluster_pub = create_publisher<visualization_msgs::msg::MarkerArray>("~/clusters", 1000);
         timer =
         create_wall_timer(
@@ -58,11 +64,11 @@ class Landmarks : public rclcpp::Node
         std::bind(&Landmarks::timer_callback, this));
     }
     private:
-        double rate, angle_increment;
+        double rate, angle_increment, max_range;
         size_t poss_obs;
         int cluster_count; // number of points before its considered a cluster
         std::string marker_frame;
-        rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub;
+        rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr lidar_sub, laser_sub;
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_pub;
         rclcpp::TimerBase::SharedPtr timer;
         vec ranges = vec(359, arma::fill::zeros);
@@ -75,9 +81,9 @@ class Landmarks : public rclcpp::Node
 
         /// \brief Timer callback
         void timer_callback() {
-            if (cluster_cyl.markers.size() < 25) {
+            if (cluster_cyl.markers.size() < 15) {
                 // create 10 cyl
-                for (int size_check = 0; size_check < 25; size_check++) {
+                for (int size_check = 0; size_check < 15; size_check++) {
                     create_cylinder(size_check);
                 }
             }
@@ -103,7 +109,7 @@ class Landmarks : public rclcpp::Node
             clusters.clear();
             for (size_t point = 0; point < (ranges.n_elem - 1); point++) {
                 // are cluster_count (4) consecutive values nonzero?
-                if (ranges(point) > 0.0) {
+                if (ranges(point) > 0.0 && ranges(point) < max_range) {
                     clust_check_count++;
                 }
                 else if (clust_check_count >= cluster_count) {
@@ -145,7 +151,7 @@ class Landmarks : public rclcpp::Node
             }
             is_cluster = false;
             // it's possible that the scan wrapped around, and a cluster is formed from the last n number of points
-            if ((ranges(ranges.n_elem - 1) != 0.0) && (ranges(0) != 0.0)) {
+            if ((abs(ranges(ranges.n_elem - 1)) < max_range) && (abs(ranges(0)) < max_range)) {
                 std::vector<double> wrap_around;
                 for (int loop = -cluster_count; loop < cluster_count; loop++) {
                     if (loop < 0) {
@@ -168,7 +174,7 @@ class Landmarks : public rclcpp::Node
                     }
                 }
                 if (clust_check_count >= (cluster_count - 1)) {
-                    RCLCPP_INFO(get_logger(), "test wrap");
+                    // RCLCPP_INFO(get_logger(), "test wrap");
                     if (first < cluster_count) {
                         first = ranges.n_elem - 1 - first;
                     }

@@ -29,10 +29,13 @@ class CircleFit : public rclcpp::Node {
     public:
     CircleFit()
     : Node("circle_fit"),
-    rate(5.0)
+    rate(5.0),
+    cyl_radius(0.038)
     {
         declare_parameter("rate", rclcpp::ParameterValue(rate));
         get_parameter("rate", rate);
+        declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius));
+        get_parameter("obstacles.r", cyl_radius);
 
         cluster_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
             "~/clusters", 100, std::bind(
@@ -44,7 +47,7 @@ class CircleFit : public rclcpp::Node {
                                   std::bind(&CircleFit::timer_callback, this));
     }
     private:
-        double rate;
+        double rate, cyl_radius;
         rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_sub;
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr circle_cluster_pub;
         rclcpp::TimerBase::SharedPtr timer;
@@ -55,6 +58,7 @@ class CircleFit : public rclcpp::Node {
         double zbar, sum, rmse, mean_thresh = 0.1, stddev_thresh = 0.1;
         turtlelib::Vector2D P1, P2;
         visualization_msgs::msg::MarkerArray actual_circles;
+        // int marker_id = 0;
 
         /// \brief Timer callback 
         void timer_callback() {
@@ -70,7 +74,6 @@ class CircleFit : public rclcpp::Node {
             for (size_t loop = 0; loop < clus.markers.size(); loop++) {
                 actual_circles.markers.at(loop).header.stamp = rclcpp::Time(0);
                 if (actual_circles.markers.at(loop).action == 0) {
-                    // actual_circles.markers.at(loop).action = 2;
                     x_coor.zeros(clus.markers.at(loop).points.size());
                     y_coor.zeros(clus.markers.at(loop).points.size());
                     for (size_t index = 0; index < clus.markers.at(loop).points.size(); index++) {
@@ -110,19 +113,21 @@ class CircleFit : public rclcpp::Node {
                     if (distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
                     // if (circle.at(2) > 1e-4 && circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
                     // if ((abs(statistics.at(0) - turtlelib::PI) <= mean_thresh) && (statistics.at(1) < stddev_thresh)) {
-                        // circle is found;
-                        RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
-                        RCLCPP_INFO(get_logger(), "%ld: center: (%.4f, %.4f) R: %.4f", loop, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
+                        ////// CIRCLE FOUND
+                        // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
+                        // RCLCPP_INFO(get_logger(), "%ld: center: (%.4f, %.4f) R: %.4f", loop, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                         // actual_circles.markers.at(loop).header.stamp = get_clock()->now();
                         actual_circles.markers.at(loop).action = 0;
+                        // actual_circles.markers.at(loop).header.frame_id = "nusim/world";
                         actual_circles.markers.at(loop).color.r = 75.0 / 256.0;
                         actual_circles.markers.at(loop).color.g = 3.0 / 256.0;
                         actual_circles.markers.at(loop).color.r = 132.0 / 256.0;
                         actual_circles.markers.at(loop).type = visualization_msgs::msg::Marker::CYLINDER;
+                        // actual_circles.markers.at(loop).id = marker_id;
                         
                         // can put cyl_radius, cyl_height
-                        actual_circles.markers.at(loop).scale.x = 0.05; // circle.at(2);
-                        actual_circles.markers.at(loop).scale.y = 0.05; //circle.at(2);
+                        actual_circles.markers.at(loop).scale.x = cyl_radius; // circle.at(2);
+                        actual_circles.markers.at(loop).scale.y = cyl_radius; //circle.at(2);
                         actual_circles.markers.at(loop).scale.z = 0.25;
                         actual_circles.markers.at(loop).pose.position.x = circle.at(0) + means.at(0);
                         actual_circles.markers.at(loop).pose.position.y = circle.at(1) + means.at(1);
@@ -132,7 +137,7 @@ class CircleFit : public rclcpp::Node {
                     }
                     else {
                         actual_circles.markers.at(loop).action = 2;
-                    }                   
+                    }
                 }
             }
         }
