@@ -30,12 +30,15 @@ class CircleFit : public rclcpp::Node {
     CircleFit()
     : Node("circle_fit"),
     rate(5.0),
-    cyl_radius(0.038)
+    cyl_radius(0.038),
+    max_range(0.5)
     {
         declare_parameter("rate", rclcpp::ParameterValue(rate));
         get_parameter("rate", rate);
         declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius));
         get_parameter("obstacles.r", cyl_radius);
+        declare_parameter("max_range", rclcpp::ParameterValue(max_range));
+        get_parameter("max_range", max_range);
 
         cluster_sub = create_subscription<visualization_msgs::msg::MarkerArray>(
             "~/clusters", 100, std::bind(
@@ -47,7 +50,7 @@ class CircleFit : public rclcpp::Node {
                                   std::bind(&CircleFit::timer_callback, this));
     }
     private:
-        double rate, cyl_radius;
+        double rate, cyl_radius, max_range;
         rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_sub;
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr circle_cluster_pub;
         rclcpp::TimerBase::SharedPtr timer;
@@ -98,7 +101,7 @@ class CircleFit : public rclcpp::Node {
             for (size_t len = 0; len < actual_circles.markers.size(); len++) {
                 actual_circles.markers.at(len).action = 2;
             }
-            marker_id = 0;
+            // marker_id = 0;
             for (size_t loop = 0; loop < clus.markers.size(); loop++) {
                 clus.markers.at(loop).header.stamp = rclcpp::Time(0);
                 if (clus.markers.at(loop).action == 0 && clus.markers.at(loop).points.size() >= 4 && actual_circles.markers.size() > 0) {
@@ -137,12 +140,14 @@ class CircleFit : public rclcpp::Node {
                     // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << arma::join_rows(x_coor, y_coor));
                     // shiftPoints(data_points, means).save("data.txt", raw_ascii);
                     // RCLCPP_INFO(get_logger(), "%ld: center: (%.4f, %.4f) R: %.4f", loop, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
+                    // RCLCPP_INFO(get_logger(), "cluster %d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                     // if (distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
-                    if (circle.at(2) > 1e-4 && circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
+                    if (circle.at(2) > 1e-4 && circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1
+                        && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) < max_range) {
                     // if ((abs(statistics.at(0) - turtlelib::PI) <= mean_thresh) && (statistics.at(1) < stddev_thresh)) {
                         ////// CIRCLE FOUND
                         // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
-                        // RCLCPP_INFO(get_logger(), "%d: center: (%.4f, %.4f) R: %.4f", marker_id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
+                        RCLCPP_INFO(get_logger(), "%d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                         actual_circles.markers.at(loop).header.stamp = get_clock()->now();
                         actual_circles.markers.at(loop).action = 0;
                         actual_circles.markers.at(loop).header.frame_id = clus.markers.at(loop).header.frame_id;
