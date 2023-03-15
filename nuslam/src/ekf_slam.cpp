@@ -366,57 +366,42 @@ class Ekf_slam : public rclcpp::Node
       if (bigN >= poss_obs) {
         RCLCPP_INFO(get_logger(), "BIG PROBLEM, too many Ns");
       }
+      RCLCPP_INFO(get_logger(), "%ld measured at: %.4f, %.4f",measurement, cyl_x, cyl_y);
       rj = distance(cyl_x, cyl_y);
       phij = (atan2(cyl_y, cyl_x));
+      zjt = {rj, phij};
       // temp set to latest observed
       zeta_predict(3 + 2*bigN) = zeta_predict(1) + rj*cos(phij + zeta_predict(0));
       zeta_predict(4 + 2*bigN) = zeta_predict(2) + rj*sin(phij + zeta_predict(0));
       landmark_temp = {getLandmarkX(bigN), getLandmarkY(bigN)};
       landmark_maha = bigN;
       dstar = max_range;
-      for (size_t landmark_k = 0; landmark_k <= bigN; landmark_k++) {
-        dxj =  landmark_temp(0) - zeta_predict(1);
-        dyj =  landmark_temp(1) - zeta_predict(2);
-        dj = dxj*dxj + dyj*dyj;
-        zhat_jt =  {sqrt(dj), turtlelib::normalize_angle(atan2(dyj, dxj) - zeta_predict(0))};
-        arma::mat maha_H = arma::mat(2, 3+2*poss_obs, arma::fill::zeros);
-        maha_H(0, 1) = -dxj/sqrt(dj);
-        maha_H(0, 2) = -dyj/sqrt(dj);
-        maha_H(1, 0) = -1;
-        maha_H(1, 1) = dyj/dj;
-        maha_H(1, 2) = -dxj/dj;
-
-        maha_H(0, 3+2*landmark_k) = dxj/sqrt(dj);
-        maha_H(0, 3+2*landmark_k+1) = dyj/sqrt(dj);
-        maha_H(1, 3+2*landmark_k) = -dyj/dj;
-        maha_H(1, 3+2*landmark_k+1) = dxj/dj;
-
-        cov_k = maha_H * sys_cov_bar * (maha_H.t()) + Rj;
-        // RCLCPP_ERROR_STREAM(get_logger(), "cov_k: \n" << cov_k);
-        dk = mahalanobis(cov_k, landmark_temp, zhat_jt);
+      for (size_t landmark_k = 0; landmark_k < bigN; landmark_k++) {
+        measurement_model(landmark_k);
+        cov_k = Hj * sys_cov_bar * (Hj.t()) + Rj;
+        dk = mahalanobis(cov_k, zjt, zhat_jt);
         if (dk < dstar) {
         // if (dk < dstar && dk > 1e-4) {
           dstar = dk;
           landmark_maha = landmark_k;
         }
-        RCLCPP_INFO(get_logger(), "%ld, %ld maha: %.6f", measurement, landmark_k, dk);
+        // RCLCPP_INFO(get_logger(), "%ld, %ld maha: %.12f", measurement, landmark_k, dk);
       }
       if ((landmark_maha == bigN)) {
-      // if ((landmark_maha == bigN) && (dstar < 1) && (dstar > 1e-4)) {
         // new landmark!
         RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
-        // set bigNth obstacle x and y
+        // RCLCPP_INFO(get_logger(), "at coord: %.4f, %.4f", getLandmarkX(bigN), getLandmarkY(bigN));
         // zeta_predict(3 + 2*bigN) = zeta_predict(1) + zhat_jt(0)*cos(zhat_jt(1) + zeta_predict(0)); // update measured landmark x
         // zeta_predict(4 + 2*bigN) = zeta_predict(2) + zhat_jt(0)*sin(zhat_jt(1) + zeta_predict(0)); // update measured landmark y
         bigN++;
       }
-      // else if ((landmark_maha == measurement) && (dstar < 1)) {
-      else if ((dstar < 1) && (dstar > 1e-4)) {
+      else if ((landmark_maha == measurement) && (dstar < 1)) {
+      // else if ((dstar < 1) && (dstar > 1e-4)) {
         // associate me!
         zeta_predict(3 + 2*bigN) = 0;
         zeta_predict(4 + 2*bigN) = 0;
         num_associated_landmark(measurement) += 1;
-        RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.6f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
+        RCLCPP_INFO(get_logger(), "associating %ld with %ld, maha_dist: %.12f for the %.1f time", measurement, landmark_maha, dstar, num_associated_landmark(measurement));
       } 
     }
 
