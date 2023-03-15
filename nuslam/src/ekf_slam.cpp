@@ -216,8 +216,8 @@ class Ekf_slam : public rclcpp::Node
       if (timestep % 50 == 0) {
         green_path.header.stamp = get_clock()->now();
         current_point.header.stamp = get_clock()->now();
-        current_point.pose.position.x = greenbot.getCurrentConfig().at(0);
-        current_point.pose.position.y = greenbot.getCurrentConfig().at(1);
+        current_point.pose.position.x = zeta_predict(1);
+        current_point.pose.position.y = zeta_predict(2);
         green_path.poses.push_back(current_point);
         green_path_pub->publish(green_path);
         if (bigN >= poss_obs) {
@@ -308,14 +308,12 @@ class Ekf_slam : public rclcpp::Node
         }
       }
 
-      // temp_state = zeta_predict
-      // qt_minusone = {zeta_predict(0), zeta_predict(1), zeta_predict(2)};
       T_mr = {turtlelib::Vector2D{zeta_predict(1), zeta_predict(2)}, zeta_predict(0)}; // from slam
       T_or = {turtlelib::Vector2D{qt(1), qt(2)}, qt(0)}; // from odom
       T_mo = T_mr * T_or.inv();
       
       zeta_prev = zeta_predict;
-      zeta_predict.save("zeta_" + std::to_string(timestep) + ".txt", arma_ascii);
+      // zeta_predict.save("zeta_" + std::to_string(timestep) + ".txt", arma_ascii);
       update_all_cylinders();
     }
 
