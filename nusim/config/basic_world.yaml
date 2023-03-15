@@ -7,9 +7,11 @@
     x_length: 2.0 # m, length of arena in x-dir
     y_length: 2.0 # m, length of arena in y-dir
     obstacles:
-      x: [-0.6, 0.7, 0.5] # x-coordinates of obstacles
-      y: [-0.8, -0.7, 0.9] # y-coordinates of obstacles
-      r: 0.068 # m, radius of obstacles
+      x: [0.58, 0.5, -0.3, -0.34] # x-coordinates of obstacles
+      y: [0.25, 0.87, -0.62, 0.57] # y-coordinates of obstacles
+      # x: [-0.6, 0.7, 0.5] # x-coordinates of obstacles
+      # y: [-0.8, -0.7, 0.9] # y-coordinates of obstacles
+      r: 0.08 # m, radius of obstacles
       h: 0.25 # m, height of obstacles
     draw_only: true # boolean to draw red robot or not
     input_noise: 0.001 # STD_DEV for input noise

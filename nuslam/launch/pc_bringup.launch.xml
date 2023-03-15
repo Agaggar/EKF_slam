@@ -6,19 +6,14 @@
         <arg name='robot' value='none' />
     </include >
     <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
+        args="--ros-args -p cluster_count:='4' -p marker_frame:='green/base_footprint' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
         if="$(eval '\'$(var use_lidar)\' == \'true\'')">
         <remap from="~/sim_lidar" to="nusim/sim_lidar" />
-    </node>
-    <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='4' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
-        if="$(eval '\'$(var use_lidar)\' == \'false\'')">
-        <remap from="~/sim_lidar" to="nusim/fake_sensor" />
     </node>
     <node pkg="nuslam" exec="circle_fit" 
         args="--ros-args --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml">
         <remap from="~/clusters" to="landmarks/clusters" />
     </node>
     <node pkg="rviz2" exec="rviz2" name="rviz2" 
-        args="-d $(find-pkg-share nuslam)/config/all_slam.rviz" />
+        args="-d $(find-pkg-share nuslam)/config/turtlebot_slam.rviz" />
 </launch>
