@@ -301,7 +301,7 @@ private:
             dataAssociate(
             obs.markers.at(landmark_id).pose.position.x, obs.markers.at(
               landmark_id).pose.position.y);
-          RCLCPP_INFO(get_logger(), "landmark %ld associated", ell);
+          // RCLCPP_INFO(get_logger(), "landmark %ld associated", ell);
         } else {
           ell = landmark_id;
         }
