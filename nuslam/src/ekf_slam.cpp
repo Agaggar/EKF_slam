@@ -117,7 +117,7 @@ class Ekf_slam : public rclcpp::Node
   private:
     double rate;
     size_t timestep, min_num_associate, ell;
-    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_update, zeta_predict, zeta_prev, m_seen, zjt, zhat_jt, dz, landmark_temp, num_associated_landmark;
+    vec qt, qt_minusone, dq, mt_minusone, mt, zeta_update, zeta_predict, zeta_prev, m_seen, zjt, zhat_jt, dz, landmark_temp, num_associated_landmark, d_zeta_prev;
     std::vector<double> wheel_rad;
     mat bigAt = mat(3, 3, arma::fill::zeros);
     mat Q, Qbar, sys_cov_bar, sys_cov, sys_cov_minusone, Hj, Kj, R, Rj, cov_k, bigI, landmark_list;
@@ -182,7 +182,8 @@ class Ekf_slam : public rclcpp::Node
         Hj.zeros(2, 3+2*poss_obs);
         zeta_predict = arma::join_cols(qt, arma::vec(2*poss_obs, arma::fill::zeros));
         zeta_update = zeta_predict;
-        zeta_prev = zeta_update;
+        zeta_prev = zeta_predict;
+        d_zeta_prev = zeta_predict;
         dz.zeros(2);
         dq.zeros(3);
         already_seen = true;
@@ -487,21 +488,18 @@ class Ekf_slam : public rclcpp::Node
     odom_msg.header.stamp = get_clock()->now();
     odom_msg.header.frame_id = "green/odom";
     odom_msg.child_frame_id = "green/base_footprint";
-    odom_msg.pose.pose.position.x = greenbot.getCurrentConfig().at(0);
-    odom_msg.pose.pose.position.y = greenbot.getCurrentConfig().at(1);
+    odom_msg.pose.pose.position.x = zeta_predict(1);
+    odom_msg.pose.pose.position.y = zeta_predict(2);
     odom_msg.pose.pose.position.z = 0.0;
     tf2::Quaternion q;
-    q.setRPY(0.0, 0.0, greenbot.getCurrentConfig().at(2));
+    q.setRPY(0.0, 0.0, zeta_predict(0));
     q.normalize();
     geometry_msgs::msg::Quaternion q_geom = tf2::toMsg(q);
     odom_msg.pose.pose.orientation = q_geom;
     std::array<double, 36> cov;
     cov.fill(0.0);
     odom_msg.pose.covariance = cov;
-    turtlelib::Twist2D vb{0.0, 0.0, 0.0};
-    if ((js_green.velocity.size() > 0)) {
-      vb = greenbot.velToTwist(js_green.velocity);
-    }
+    turtlelib::Twist2D vb{d_zeta_prev(0) - zeta_predict(0), d_zeta_prev(1) - zeta_predict(1), d_zeta_prev(1) - zeta_predict(1)};
     odom_msg.twist.twist.linear.x = vb.linearx;
     odom_msg.twist.twist.linear.y = vb.lineary;
     odom_msg.twist.twist.linear.z = 0.0;
@@ -509,6 +507,8 @@ class Ekf_slam : public rclcpp::Node
     odom_msg.twist.twist.angular.y = 0.0;
     odom_msg.twist.twist.angular.z = vb.angular;
     odom_msg.twist.covariance = cov;
+    
+    d_zeta_prev = zeta_predict;
     return odom_msg;
   }
 
