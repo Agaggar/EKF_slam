@@ -38,9 +38,9 @@ public:
   TurtleControl()
   : Node("turtle_control"),
     wheel_radius(0.033),
-    track_width(0.16), 
+    track_width(0.16),
     motor_cmd_max(265),
-    motor_cmd_per_rad_sec(1.0 / 0.024), 
+    motor_cmd_per_rad_sec(1.0 / 0.024),
     encoder_ticks_per_rad(651.8986),
     collision_radius(0.11),
     nubot(),
@@ -69,9 +69,9 @@ public:
     get_parameter("odom_id", odom_id);
     get_parameter("wheel_left", wheel_left);
     get_parameter("wheel_right", wheel_right);
-    
+
     std::vector<double> params_set {wheel_radius, track_width, double(motor_cmd_max),
-                                    motor_cmd_per_rad_sec, encoder_ticks_per_rad, collision_radius};
+      motor_cmd_per_rad_sec, encoder_ticks_per_rad, collision_radius};
 
     for (unsigned int i = 0; i < params_set.size(); i++) {
       if (params_set.at(i) == -1.0) {
@@ -85,8 +85,14 @@ public:
 
     wheel_cmd_pub = create_publisher<nuturtlebot_msgs::msg::WheelCommands>("/wheel_cmd", 10);
     js_pub = create_publisher<sensor_msgs::msg::JointState>("/joint_states", 10);
-    cmd_vel_sub = create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
-    sensor_data_sub = create_subscription<nuturtlebot_msgs::msg::SensorData>("/sensor_data", 10, std::bind(&TurtleControl::sd_callback, this, std::placeholders::_1));
+    cmd_vel_sub =
+      create_subscription<geometry_msgs::msg::Twist>(
+      "/cmd_vel", 10,
+      std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
+    sensor_data_sub = create_subscription<nuturtlebot_msgs::msg::SensorData>(
+      "/sensor_data", 10, std::bind(
+        &TurtleControl::sd_callback, this,
+        std::placeholders::_1));
     timer =
       create_wall_timer(
       std::chrono::milliseconds(int(1.0 / 200.0 * 1000)),
@@ -118,7 +124,8 @@ private:
 
   /// \brief cmd_vel subscription callback assigns 2D velocity values to Twist2D qdot
   /// \param twist - cmd_vel message received
-  void cmd_vel_callback(const geometry_msgs::msg::Twist &twist) {
+  void cmd_vel_callback(const geometry_msgs::msg::Twist & twist)
+  {
     qdot.angular = twist.angular.z;
     qdot.linearx = twist.linear.x;
     qdot.lineary = twist.linear.y;
@@ -126,7 +133,8 @@ private:
 
   /// \brief sensor_data subscription callback
   /// \param sd - received sensor data
-  void sd_callback(const nuturtlebot_msgs::msg::SensorData sd) {
+  void sd_callback(const nuturtlebot_msgs::msg::SensorData sd)
+  {
     js_msg.header.stamp = get_clock()->now();
     js_msg.header.frame_id = body_id;
     js_msg.name = std::vector<std::string>{wheel_left, wheel_right};
@@ -139,40 +147,48 @@ private:
   /// \brief helper function to convert velocity (from inv kin) to wheel ticks
   /// \param wheel_vel - left and right wheel velocities to convert to ticks
   /// \return message in WheelCommands
-  nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel) {
+  nuturtlebot_msgs::msg::WheelCommands conv_vel_to_tick(std::vector<double> wheel_vel)
+  {
     nuturtlebot_msgs::msg::WheelCommands cmd;
-    cmd.left_velocity = int32_t (std::round(wheel_vel.at(0) * motor_cmd_per_rad_sec));
-    cmd.right_velocity = int32_t (std::round(wheel_vel.at(1) * motor_cmd_per_rad_sec));
+    cmd.left_velocity = int32_t(std::round(wheel_vel.at(0) * motor_cmd_per_rad_sec));
+    cmd.right_velocity = int32_t(std::round(wheel_vel.at(1) * motor_cmd_per_rad_sec));
     if (cmd.left_velocity > motor_cmd_max) {
-      cmd.left_velocity = int32_t (motor_cmd_max);  
+      cmd.left_velocity = int32_t(motor_cmd_max);
     }
     if (cmd.right_velocity > motor_cmd_max) {
-      cmd.right_velocity = int32_t (motor_cmd_max);  
+      cmd.right_velocity = int32_t(motor_cmd_max);
     }
     if (cmd.left_velocity < -motor_cmd_max) {
-      cmd.left_velocity = int32_t (-motor_cmd_max);  
+      cmd.left_velocity = int32_t(-motor_cmd_max);
     }
     if (cmd.right_velocity < -motor_cmd_max) {
-      cmd.right_velocity = int32_t (-motor_cmd_max);  
+      cmd.right_velocity = int32_t(-motor_cmd_max);
     }
     return cmd;
   }
 
-  /// \brief helper function to convert encoder data to radians  
-  /// \param left_encoder - encoder ticks, left wheel  
+  /// \brief helper function to convert encoder data to radians
+  /// \param left_encoder - encoder ticks, left wheel
   /// \param right_encoder - encoder ticks, right wheel
-  /// \return radian values for each wheel 
-  std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder) {
-    return std::vector<double> {double(left_encoder)/encoder_ticks_per_rad, double(right_encoder)/encoder_ticks_per_rad};
+  /// \return radian values for each wheel
+  std::vector<double> encoder_to_rad(int32_t left_encoder, int32_t right_encoder)
+  {
+    return std::vector<double> {double(left_encoder) / encoder_ticks_per_rad,
+      double(right_encoder) / encoder_ticks_per_rad};
   }
 
   /// \brief helper function to compute velocity based on time difference
   /// \param current - current position, as read by joint states
-  /// \param prev - prev position, as read by bot before 
-  /// \return 
-  std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev) {
-    return std::vector<double> {(current.at(0) - prev.at(0))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9), 
-                                (current.at(1) - prev.at(1))/(js_msg.header.stamp.sec + js_msg.header.stamp.nanosec*1e-9 - current_time.nanoseconds()*1e-9)
+  /// \param prev - prev position, as read by bot before
+  /// \return
+  std::vector<double> compute_vel(std::vector<double> current, std::vector<double> prev)
+  {
+    return std::vector<double> {(current.at(0) - prev.at(0)) /
+      (js_msg.header.stamp.sec + js_msg.header.stamp.nanosec * 1e-9 - current_time.nanoseconds() *
+      1e-9),
+      (current.at(1) - prev.at(1)) /
+      (js_msg.header.stamp.sec + js_msg.header.stamp.nanosec * 1e-9 - current_time.nanoseconds() *
+      1e-9)
     };
   }
 };

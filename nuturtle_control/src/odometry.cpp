@@ -130,8 +130,8 @@ private:
     }
   }
 
-  /// \brief callback function for /joint_states subscription  
-  /// \param js - JointState message received 
+  /// \brief callback function for /joint_states subscription
+  /// \param js - JointState message received
   void js_callback(const sensor_msgs::msg::JointState js)
   {
     if ((js_msg.velocity.size() > 1)) {
