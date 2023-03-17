@@ -101,7 +101,8 @@ public:
     scan_time(0.20066890120506287),
     range_min(0.11999999731779099),
     range_max(3.5),
-    lidar_noise(0.0001)
+    lidar_noise(0.0001),
+    lidar_frame("red/base_footprint")
   {
     rcl_interfaces::msg::ParameterDescriptor rate_param_desc;
     rate_param_desc.name = "rate";
@@ -224,6 +225,9 @@ public:
     declare_parameter("lidar_noise", rclcpp::ParameterValue(lidar_noise));
     get_parameter("lidar_noise", lidar_noise);
 
+    declare_parameter("lidar_frame", rclcpp::ParameterValue(lidar_frame));
+    get_parameter("lidar_frame", lidar_frame);
+
     gauss_dist_vel_noise = std::normal_distribution<>{0.0, (input_noise)};
     gauss_dist_obstacle_noise = std::normal_distribution<>{0.0, (basic_sensor_variance)};
     gauss_dist_lidar_noise = std::normal_distribution<>{0.0, (lidar_noise)};
@@ -263,6 +267,7 @@ private:
   double x_length, y_length, input_noise, slip_fraction, basic_sensor_variance, max_range, collision_radius, encoder_ticks_per_rad, motor_cmd_per_rad_sec;
   bool draw_only;
   double angle_min, angle_max, angle_increment, time_increment, scan_time, range_min, range_max, lidar_noise;
+  std::string lidar_frame;
   std_msgs::msg::UInt64 ts;
   rclcpp::TimerBase::SharedPtr timer_, five_hz_timer;
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -321,7 +326,7 @@ private:
       red_path.header.frame_id = "nusim/world";
       current_point.header.frame_id = "nusim/world";
 
-      fake_lidar.header.frame_id = "red/base_scan";
+      fake_lidar.header.frame_id = lidar_frame;
       fake_lidar.header.stamp = get_clock()->now();
       fake_lidar.angle_min = angle_min;
       fake_lidar.angle_max = angle_max;
