@@ -48,6 +48,12 @@
             <remap from="~/sensor_data" to="red/sensor_data"/>
         </node>
 
+        <include file="$(find-pkg-share nuturtle_description)/launch/load_one.launch.py" >
+            <arg name="use_rviz" value="false"/>
+            <arg name="color" value="green"/>
+            <arg name="use_jsp" value="false"/>
+        </include>
+
     </group>
 
     <group if="$(eval '\'$(var robot)\' == \'none\'')" >
@@ -61,9 +67,9 @@
         </include>
         
         <node pkg="nusim" exec="nusim"
-            args="--ros-args -r __node:=nuwall --params-file $(find-pkg-share nusim)/config/basic_world.yaml -p draw_only:=false" >
+            args="--ros-args -p lidar_frame:='blue/base_scan' -r __node:=nuwall --params-file $(find-pkg-share nusim)/config/basic_world.yaml -p draw_only:=false" >
             <remap from="/wheel_cmd" to="red/wheel_cmd"/>
-            <remap from="~/sensor_data" to="red/sensor_data"/>
+            <remap from="/sensor_data" to="red/sensor_data"/>
         </node>
 
     </group>

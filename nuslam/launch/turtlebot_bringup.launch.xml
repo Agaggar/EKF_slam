@@ -4,6 +4,9 @@
         <arg name='use_lidar' value='true' />
         <arg name='robot' value='localhost' />
     </include >
+    <include file="$(find-pkg-share hls_lfcd_lds_driver)/launch/hlds_laser.launch.py">
+        <arg name="port" value="/dev/ttyUSB0"/>
+    </include>
     <node pkg="nuslam" exec="landmarks" 
         args="--ros-args -p cluster_count:='4' -p marker_frame:='green/base_footprint' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
         if="$(eval '\'$(var use_lidar)\' == \'true\'')">

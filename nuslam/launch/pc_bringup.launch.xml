@@ -6,7 +6,7 @@
         <arg name='robot' value='none' />
     </include >
     <node pkg="nuslam" exec="landmarks" 
-        args="--ros-args -p cluster_count:='4' -p marker_frame:='green/base_footprint' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
+        args="--ros-args -p cluster_count:='4' -p marker_frame:='blue/base_footprint' --params-file $(find-pkg-share nusim)/config/basic_world.yaml --params-file $(find-pkg-share nuturtle_description)/config/diff_params.yaml" 
         if="$(eval '\'$(var use_lidar)\' == \'true\'')">
         <remap from="~/sim_lidar" to="nusim/sim_lidar" />
     </node>
