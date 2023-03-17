@@ -422,25 +422,25 @@ private:
       zeta_predict(3 + 2 * bigN) = 0;
       zeta_predict(4 + 2 * bigN) = 0;
       num_associated_landmark(landmark_maha) += 1;
-      RCLCPP_INFO(get_logger(), "return %ld, %.6f", landmark_maha, dstar);
+      // RCLCPP_INFO(get_logger(), "return %ld, %.6f", landmark_maha, dstar);
       return landmark_maha;
     } else {
       // new landmark!
       already_seen = false;
-      RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
+      // RCLCPP_INFO(get_logger(), "new landmark? N: %ld", bigN);
       for (size_t landmark_seen = 0; landmark_seen < bigN; landmark_seen++) {
         if (distance(
             landmark_list(landmark_seen, 0), landmark_list(landmark_seen, 1),
             getLandmarkX(bigN), getLandmarkY(bigN)) < 0.5)
         {
-          RCLCPP_INFO(get_logger(), "already seen: %ld", bigN);
+          // RCLCPP_INFO(get_logger(), "already seen: %ld", bigN);
           already_seen = true;
-          RCLCPP_INFO(get_logger(), "return landmark seen %ld, %.6f", landmark_maha, dstar);
+          // RCLCPP_INFO(get_logger(), "return landmark seen %ld, %.6f", landmark_maha, dstar);
           return landmark_seen;
         }
       }
       if (already_seen == false) {
-        RCLCPP_INFO(get_logger(), "new landmark! %ld, %.6f", bigN, dstar);
+        // RCLCPP_INFO(get_logger(), "new landmark! %ld, %.6f", bigN, dstar);
         landmark_list(bigN, 0) = getLandmarkX(bigN);
         landmark_list(bigN, 1) = getLandmarkY(bigN);
         bigN++;

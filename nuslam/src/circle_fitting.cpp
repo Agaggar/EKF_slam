@@ -155,10 +155,10 @@ private:
           distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) < max_range)
         {
           // CIRCLE FOUND
-          RCLCPP_INFO(
-            get_logger(), "%d: center: (%.4f, %.4f) R: %.4f",
-            actual_circles.markers.at(loop).id, circle.at(0) + means.at(0),
-            circle.at(1) + means.at(1), circle.at(2));
+          //   RCLCPP_INFO(
+          //     get_logger(), "%d: center: (%.4f, %.4f) R: %.4f",
+          //     actual_circles.markers.at(loop).id, circle.at(0) + means.at(0),
+          //     circle.at(1) + means.at(1), circle.at(2));
           actual_circles.markers.at(loop).header.stamp = get_clock()->now();
           actual_circles.markers.at(loop).action = 0;
           actual_circles.markers.at(loop).header.frame_id = clus.markers.at(loop).header.frame_id;
