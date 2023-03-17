@@ -3,8 +3,11 @@
 ///
 /// PARAMETERS:
 ///     rate (double): frequency of timer callback (hertz), defaults to 200
+///     cyl_radius (double): radius of obstacles (m)
+///     cyl_height (double): height of obstacles (m)
+///     max_range (double): max_range of sensor
 /// PUBLISHES:
-///     none
+///     landmarks/circle_clusters (visualization_msgs::msg::MarkerArray): clusters that are also circles
 /// SUBSCRIBES:
 ///     ~/clusters (visualization_msgs::msg::MarkerArray): clusters in rviz
 /// SERVERS:
@@ -31,12 +34,15 @@ class CircleFit : public rclcpp::Node {
     : Node("circle_fit"),
     rate(5.0),
     cyl_radius(0.038),
+    cyl_height(0.25),
     max_range(0.5)
     {
         declare_parameter("rate", rclcpp::ParameterValue(rate));
         get_parameter("rate", rate);
         declare_parameter("obstacles.r", rclcpp::ParameterValue(cyl_radius));
         get_parameter("obstacles.r", cyl_radius);
+        declare_parameter("obstacles.h", rclcpp::ParameterValue(cyl_height));
+        get_parameter("obstacles.h", cyl_height);
         declare_parameter("max_range", rclcpp::ParameterValue(max_range));
         get_parameter("max_range", max_range);
 
@@ -50,7 +56,7 @@ class CircleFit : public rclcpp::Node {
                                   std::bind(&CircleFit::timer_callback, this));
     }
     private:
-        double rate, cyl_radius, max_range;
+        double rate, cyl_radius, cyl_height, max_range;
         rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr cluster_sub;
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr circle_cluster_pub;
         rclcpp::TimerBase::SharedPtr timer;
@@ -87,10 +93,9 @@ class CircleFit : public rclcpp::Node {
             circleAdd.color.g = 3.0 / 256.0;
             circleAdd.color.r = 132.0 / 256.0;
             circleAdd.type = visualization_msgs::msg::Marker::CYLINDER;
-            // can put cyl_radius, cyl_height
             circleAdd.scale.x = cyl_radius; // circle.at(2);
             circleAdd.scale.y = cyl_radius; //circle.at(2);
-            circleAdd.scale.z = 0.25;
+            circleAdd.scale.z = cyl_height;
             circleAdd.pose.position.z = circleAdd.scale.z / 2.0;
             return circleAdd;
         }
@@ -134,28 +139,18 @@ class CircleFit : public rclcpp::Node {
                     bigA = computeA(bigZ, bigH);
                     // RCLCPP_ERROR_STREAM(get_logger(), "bigA: \n" << bigA);
                     circle = circleEq(bigA);
-                    rmse = RMSE(circle, x_coor, y_coor);
-                    // #TODO: radius filtering and/or statistic filtering to pick a circle
-                    statistics = computeStats(data_points.col(0), data_points.col(1));
-                    // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << arma::join_rows(x_coor, y_coor));
-                    // shiftPoints(data_points, means).save("data.txt", raw_ascii);
-                    // RCLCPP_INFO(get_logger(), "%ld: center: (%.4f, %.4f) R: %.4f", loop, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
-                    RCLCPP_INFO(get_logger(), "cluster %d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
-                    // if (distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1) {
+                    // rmse = RMSE(circle, x_coor, y_coor);
+                    // statistics = computeStats(data_points.col(0), data_points.col(1));
+                    // RCLCPP_INFO(get_logger(), "cluster %d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                     if (circle.at(2) < 0.1 && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) > .1
                         && distance(circle.at(0) + means.at(0), circle.at(1) + means.at(1)) < max_range) {
-                    // if ((abs(statistics.at(0) - turtlelib::PI) <= mean_thresh) && (statistics.at(1) < stddev_thresh)) {
-                        ////// CIRCLE FOUND
-                        // RCLCPP_ERROR_STREAM(get_logger(), "data: \n" << data_points);
+                        // CIRCLE FOUND
                         RCLCPP_INFO(get_logger(), "%d: center: (%.4f, %.4f) R: %.4f", actual_circles.markers.at(loop).id, circle.at(0) + means.at(0), circle.at(1) + means.at(1), circle.at(2));
                         actual_circles.markers.at(loop).header.stamp = get_clock()->now();
                         actual_circles.markers.at(loop).action = 0;
                         actual_circles.markers.at(loop).header.frame_id = clus.markers.at(loop).header.frame_id;
                         actual_circles.markers.at(loop).pose.position.x = circle.at(0) + means.at(0);
                         actual_circles.markers.at(loop).pose.position.y = circle.at(1) + means.at(1);
-                        // actual_circles.markers.push_back(circleAdd);
-                        // RCLCPP_INFO(get_logger(), "mean: %.4f, std: %.4f", turtlelib::rad2deg(statistics.at(0)), statistics.at(1));
-                        // RCLCPP_ERROR_STREAM(get_logger(), "circle: " << (circle.at(0) + means.at(0)) << ", " << (circle.at(1) + means.at(1)) << ", " << sqrt(circle.at(2)));
                     }
                     else {
                         actual_circles.markers.at(loop).action = 2;

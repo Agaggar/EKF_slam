@@ -29,6 +29,7 @@
 ///     range_min (double): minimum range that lidar can sense (m)
 ///     range_max (double): maximum range that lidar can sense, according to its datasheet (m)
 ///     lidar_noise (double): value to simulate noise in lidar measurements (dimensionless)
+///     lidar_frame (std::string): base frame for lidar measurements
 /// PUBLISHES:
 ///     /tf (tf2_ros::TransformBroadcaster): publish transform from nusim/world to red/base_footprint
 ///     /timestep (int): publish timestep of simulation
@@ -367,9 +368,6 @@ private:
     marker_pub_->publish(all_cyl);
     update_sd();
     sd_pub->publish(sd);
-    if (timestep%40 == 0) {
-      // RCLCPP_INFO(get_logger(), "red robot state: %.3f, %.3f, %.3f", redbot.getCurrentConfig().at(2), redbot.getCurrentConfig().at(0), redbot.getCurrentConfig().at(1));
-    }
   }
 
   /// \brief timer callback at 5 hz for a fake sensor

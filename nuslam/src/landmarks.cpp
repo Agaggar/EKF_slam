@@ -4,6 +4,9 @@
 /// PARAMETERS:
 ///     rate (double): frequency of timer callback (hertz), defaults to 200
 ///     angle_increment (double): angle between consecutive readings from lidar (rad)
+///     max_range (double): max_range of sensor
+///     cluster_count (size_t): number of points to be considered a cluster
+///     marker_frame (std::string): base frame for obstacle (same as measurement sensor)
 /// PUBLISHES:
 ///     ~/clusters (visualization_msgs::msg::MarkerArray): a way to visualize the clusters in rviz
 /// SUBSCRIBES:
@@ -74,7 +77,6 @@ class Landmarks : public rclcpp::Node
         rclcpp::TimerBase::SharedPtr timer;
         vec ranges = vec(359, arma::fill::zeros);
         std::vector<std::vector<float>> clusters;
-        // mat clusters = mat(359, 359, -1*arma::fill::ones);
         int clust_check_count = 0;
         bool is_cluster = false;
         double tolerance = 0.15;
@@ -101,7 +103,6 @@ class Landmarks : public rclcpp::Node
         void lidar_callback(sensor_msgs::msg::LaserScan ls) {
             ranges = arma::conv_to<arma::vec>::from(ls.ranges);
             cluster();
-            // RCLCPP_ERROR_STREAM(get_logger(), "ranges: \n" << ranges);
         }
 
         /// \brief cluster points from ranges
@@ -117,7 +118,6 @@ class Landmarks : public rclcpp::Node
                     // there were at least cluster_count (4) consecutive values that were positive
                     size_t all_points = clust_check_count;
                     clust_check_count = 0;
-                    // RCLCPP_INFO(get_logger(), "ind pt: %ld", +point);
                     for (size_t next_point = 1; next_point < (all_points - 1); next_point++) {
                         if ((point+next_point + 1) >= ranges.n_elem) {
                             next_point = all_points;
@@ -129,18 +129,12 @@ class Landmarks : public rclcpp::Node
                     // here were at least cluster_count (4) consecutive values that had the same distance as (+point)
                     if (clust_check_count >= (cluster_count - 1) && (point >= clust_check_count)) {
                         // RCLCPP_INFO(get_logger(), "cluster found: %ld", point);
-                        // RCLCPP_INFO(get_logger(), "test 1.2.1: %d", clust_check_count);
-                        // RCLCPP_ERROR_STREAM(get_logger(), "ranges: \n" << ranges);
                         clusters.push_back(std::vector<float>{(float) point - clust_check_count}); // the first element of a row is the angle value of where it was measured
                         for (int addMe = 1; addMe < clust_check_count; addMe++) {
                             if ((point - clust_check_count + addMe + 1) < ranges.n_elem) {
                                 clusters.at(cluster_row).push_back(ranges(point - clust_check_count + addMe));
                             }
                         }
-                        // RCLCPP_ERROR_STREAM(get_logger(), "cluster points: \n" << arma::conv_to<arma::vec>::from(clusters.at(cluster_row)));
-                        // clusters.at(mark).at(index) * cos(clusters.at(mark).at(0) * angle_increment)).
-                        //                                             y(clusters.at(mark).at(index) * sin(clusters.at(mark).at(0) * angle_increment)).
-                        //                                             z(cluster_cyl.markers.at(mark).scale.z / 2.0));
                         point += clust_check_count; // skip the next clust_check points since we already know they're in this cluster
                         cluster_row++;
                     }
@@ -164,7 +158,6 @@ class Landmarks : public rclcpp::Node
                 }
                 clust_check_count = 0;
                 int first = 0;
-                // RCLCPP_INFO(get_logger(), "points: %.2f, %.2f, %.2f", ranges(index+1), ranges(index), std::abs(ranges(index+1) - ranges(index)));
                 for (size_t point = 0; point < (wrap_around.size() - 1); point++) {
                     if ((std::abs(wrap_around.at(point+1) - wrap_around.at(point)) < tolerance) && 
                         (wrap_around.at(point) > 0)) {
@@ -175,7 +168,6 @@ class Landmarks : public rclcpp::Node
                     }
                 }
                 if (clust_check_count >= (cluster_count - 1)) {
-                    // RCLCPP_INFO(get_logger(), "test wrap");
                     if (first < cluster_count) {
                         first = ranges.n_elem - 1 - first;
                     }
