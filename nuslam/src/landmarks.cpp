@@ -130,7 +130,7 @@ private:
           }
         }
         // here were at least cluster_count (4) consecutive values that had the same distance as (+point)
-        if (clust_check_count >= (cluster_count - 1) && (point >= clust_check_count)) {
+        if (clust_check_count >= (cluster_count - 1) && ((int) point >= clust_check_count)) {
           // RCLCPP_INFO(get_logger(), "cluster found: %ld", point);
           clusters.push_back(std::vector<float>{(float) point - clust_check_count});               // the first element of a row is the angle value of where it was measured
           for (int addMe = 1; addMe < clust_check_count; addMe++) {
