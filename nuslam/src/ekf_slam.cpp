@@ -143,7 +143,6 @@ private:
   tf2::Quaternion q;
   nav_msgs::msg::Odometry odom_msg;
   sensor_msgs::msg::JointState js_green;
-  nav_msgs::msg::Odometry odom_msg;
   double dxj, dyj, dj, prev_theta, dk, dstar;
   size_t poss_obs = 15;   // container for total possible number of obstacles
   size_t bigN, landmark_actual, landmark_maha;   // for data association
