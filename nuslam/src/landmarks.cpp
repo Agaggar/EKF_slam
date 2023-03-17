@@ -17,6 +17,7 @@
 #include <cmath>
 #include <random>
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp/qos.hpp"
 #include "geometry_msgs/msg/point.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "visualization_msgs/msg/marker.hpp"
